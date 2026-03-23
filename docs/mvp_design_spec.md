@@ -17,17 +17,13 @@
    - [1.2 Users](#12-users)
    - [1.3 Scope](#13-scope)
 2. [Success Criteria](#2-success-criteria)
-3. [User Stories](#3-user-stories)
 4. [User Flow](#4-user-flow)
 5. [Data Flow](#5-data-flow)
 6. [System Architecture](#6-system-architecture)
    - [6.1 Components](#61-components)
    - [6.2 Technology Stack](#62-technology-stack)
 7. [ChromaDB Vector Database](#7-chromadb-vector-database)
-   - [7.1 Purpose](#71-purpose)
-   - [7.2 Document Structure](#72-document-structure-draft)
-   - [7.3 Corpus Curation](#73-corpus-curation)
-   - [7.4 Embedding Strategy](#74-embedding-strategy)
+   - [7.1 Document Structure](#71-document-structure)
 8. [LLM Integration](#8-llm-integration)
    - [8.1 Model Selection](#81-model-selection)
    - [8.2 Inference Configuration](#82-inference-configuration)
@@ -35,21 +31,14 @@
    - [8.4 LLM Hosting](#84-llm-hosting)
 9. [WDL Validation](#9-wdl-validation)
 10. [Tool Selection Module](#10-tool-selection-module)
-    - [10.1 Purpose](#101-purpose)
-    - [10.2 Approach](#102-approach-draft)
-    - [10.3 Output Format](#103-output-format)
-    - [10.4 User Interaction](#104-user-interaction-cli)
-    - [10.5 Integration with WDL Generation](#105-integration-with-wdl-generation)
 11. [Security & Privacy](#11-security--privacy)
 12. [Key Design Decisions](#12-key-design-decisions)
-    - [12.1 Why Human-in-the-Loop?](#121-why-human-in-the-loop)
+    - [12.1 Why a Local LLM?](#121-why-a-local-llm)
     - [12.2 Why RAG Instead of Fine-Tuning?](#122-why-rag-instead-of-fine-tuning)
-    - [12.3 Why a Local LLM?](#123-why-a-local-llm)
-    - [12.4 Why No Session History?](#124-why-no-session-history)
-    - [12.5 Why `all-MiniLM-L6-v2` for Embeddings?](#125-why-all-minilm-l6-v2-for-embeddings)
+    - [12.3 Why Human-in-the-Loop?](#123-why-human-in-the-loop)
 13. [Risks & Mitigations](#13-risks--mitigations)
 14. [Deliverables](#14-deliverables)
-15. [Future Work (Phase 2+)](#15-future-work-phase-2)
+15. [Future Work](#15-future-work)
 
 ---
 
@@ -57,23 +46,27 @@
 
 ### 1.1 Purpose and Problem Statement
 
-**Purpose**
+**Purpose:**
 
 WILDS WDL Writer is a local, LLM-based command-line tool for generating complete WDL (Workflow Description Language) workflows using components from the [WILDS WDL Library](https://github.com/getwilds/wilds-wdl-library). Users provide information about their input data and analysis goals via an interactive CLI session. The tool uses RAG (Retrieval-Augmented Generation) to search through curated WDL examples and identify appropriate componenents, which provide context to the language model. The tool incorporates human-in-the-loop approval when selecting bioinformatics tools and when reviewing the final WDL output.
 
-**Problem Statement**
+**Problem Statement:**
 
 WDL workflows take a long time to write and require significant bioinformatics knowledge. These problems are experienced by both new and experienced WDL users and are a barrier to WDL adoption by labs.
 
 ### 1.2 Users
 
-- **Primary:** Bioinformaticians
-- **Secondary:** Postdocs and grad students
+Bioinformaticians (primary) and postdocs and grad students (secondary).
 
-**User Needs**
-
+**User Needs:**
 - Able to write WDLs for their use cases
 - Faster and/or easier than iterating with an AI chatbot (e.g., ChatGPT, Claude)
+
+**User Stories:**
+
+- **US-1 Faster Than Manual Writing:** As a grad student creating a variant calling workflow, I want to generate a complete WDL in under an hour so that I can be more productive than writing it manually or iterating with ChatGPT.
+- **US-2 Privacy Requirements:** As a researcher developing unpublished pipelines, I want to generate workflows without sending any information outside Fred Hutch so that I can use it with unpublished or sensitive pipeline designs.
+- **US-3 WDL Validation:** As a user generating a WDL from scratch, I want to validate its syntax so that I can run it without error.
 
 ### 1.3 Scope
 
@@ -115,11 +108,7 @@ WDL workflows take a long time to write and require significant bioinformatics k
 | Validation | <3 minutes |
 | **Total (no human review time)** | **<1 hour** |
 
-## 3. User Stories
 
-- **US-1: Faster Than Manual Writing** — As a grad student creating a variant calling workflow, I want to generate a complete WDL in under an hour so that I can be more productive than writing it manually or iterating with ChatGPT.
-- **US-2: Privacy Requirements** — As a researcher developing unpublished pipelines, I want to generate workflows without sending any information outside Fred Hutch so that I can use it with unpublished or sensitive pipeline designs.
-- **US-3: WDL Validation** — As a user generating a WDL from scratch, I want to validate its syntax so that I can run it without error.
 
 ## 4. User Flow
 
@@ -328,8 +317,6 @@ Local laptop (CPU or GPU via Ollama)
 ## 10. Tool Selection Module
 
 Identify and present recommended bioinformatics tools for user review before WDL generation.
-
-**Approach**
 
 1. Parse the top-ranked retrieved WDL task metadata to identify tools
 2. Aggregate tools by purpose (alignment, variant calling, etc.). Store up to three alternatives.
