@@ -17,28 +17,28 @@
    - [1.2 Users](#12-users)
    - [1.3 Scope](#13-scope)
 2. [Success Criteria](#2-success-criteria)
-4. [User Flow](#4-user-flow)
-5. [Data Flow](#5-data-flow)
-6. [System Architecture](#6-system-architecture)
-   - [6.1 Components](#61-components)
-   - [6.2 Technology Stack](#62-technology-stack)
-7. [ChromaDB Vector Database](#7-chromadb-vector-database)
-   - [7.1 Document Structure](#71-document-structure)
-8. [LLM Integration](#8-llm-integration)
-   - [8.1 Model Selection](#81-model-selection)
-   - [8.2 Inference Configuration](#82-inference-configuration)
-   - [8.3 Prompt Strategy](#83-prompt-strategy)
-   - [8.4 LLM Hosting](#84-llm-hosting)
-9. [WDL Validation](#9-wdl-validation)
-10. [Tool Selection Module](#10-tool-selection-module)
-11. [Security & Privacy](#11-security--privacy)
-12. [Key Design Decisions](#12-key-design-decisions)
-    - [12.1 Why a Local LLM?](#121-why-a-local-llm)
-    - [12.2 Why RAG Instead of Fine-Tuning?](#122-why-rag-instead-of-fine-tuning)
-    - [12.3 Why Human-in-the-Loop?](#123-why-human-in-the-loop)
-13. [Risks & Mitigations](#13-risks--mitigations)
-14. [Deliverables](#14-deliverables)
-15. [Future Work](#15-future-work)
+3. [User Flow](#3-user-flow)
+4. [Data Flow](#4-data-flow)
+5. [System Architecture](#5-system-architecture)
+   - [5.1 Components](#51-components)
+   - [5.2 Technology Stack](#52-technology-stack)
+6. [ChromaDB Vector Database](#6-chromadb-vector-database)
+   - [6.1 Document Structure](#61-document-structure)
+7. [LLM Integration](#7-llm-integration)
+   - [7.1 Model Selection](#71-model-selection)
+   - [7.2 Inference Configuration](#72-inference-configuration)
+   - [7.3 Prompt Strategy](#73-prompt-strategy)
+   - [7.4 LLM Hosting](#74-llm-hosting)
+8. [WDL Validation](#8-wdl-validation)
+9. [Tool Selection Module](#9-tool-selection-module)
+10. [Security & Privacy](#10-security--privacy)
+11. [Key Design Decisions](#11-key-design-decisions)
+    - [11.1 Why a Local LLM?](#111-why-a-local-llm)
+    - [11.2 Why RAG Instead of Fine-Tuning?](#112-why-rag-instead-of-fine-tuning)
+    - [11.3 Why Human-in-the-Loop?](#113-why-human-in-the-loop)
+12. [Risks & Mitigations](#12-risks--mitigations)
+13. [Deliverables](#13-deliverables)
+14. [Future Work](#14-future-work)
 
 ---
 
@@ -110,7 +110,7 @@ Bioinformaticians (primary) and postdocs and grad students (secondary).
 
 
 
-## 4. User Flow
+## 3. User Flow
 
 1. User runs the script and is prompted to select from pre-written values for:
    - Input data types (e.g. "Paired FASTQ")
@@ -131,7 +131,7 @@ Bioinformaticians (primary) and postdocs and grad students (secondary).
 6. Information on how to get help from OCDO (Data House Calls, etc.) printed at the end
 
 
-## 5. Data Flow
+## 4. Data Flow
 
 **Step 1: Input Collection**
 
@@ -182,9 +182,9 @@ Combine into a single LLM prompt:
   - **Reject:** collect reason; retry generation once with that feedback appended to the prompt
 
 
-## 6. System Architecture
+## 5. System Architecture
 
-### 6.1 Components
+### 5.1 Components
 
 | Component | Description |
 |---|---|
@@ -198,7 +198,7 @@ Combine into a single LLM prompt:
 | **WDL validator** | Runs `miniwdl check --strict` and `sprocket lint`; feeds errors back to LLM on failure |
 | **File writer** | Saves the approved WDL to a user-specified output path |
 
-### 6.2 Technology Stack
+### 5.2 Technology Stack
 
 | Component | Technology | Notes |
 |---|---|---|
@@ -213,14 +213,14 @@ Combine into a single LLM prompt:
 
 ---
 
-## 7. ChromaDB Vector Database
+## 6. ChromaDB Vector Database
 
 Two ChromaDB collections support the RAG pipeline:
 
 - **`wdl_tasks`** — stores enriched WDL task chunks from the WILDS WDL Library. The primary retrieval mechanism is metadata filtering (analysis category, input/output types); vector search is available as a fallback when metadata filters return insufficient results.
 - **`tool_docs`** — stores chunked tool documentation. Queried via vector search using command-line invocations extracted from a retrieved task's command block.
 
-### 7.1 Document Structure
+### 6.1 Document Structure
 
 **`wdl_tasks` collection** — each document stored with:
 
@@ -245,9 +245,9 @@ Two ChromaDB collections support the RAG pipeline:
 
 Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 
-## 8. LLM Integration
+## 7. LLM Integration
 
-### 8.1 Model Selection
+### 7.1 Model Selection
 
 **Candidates (draft):**
 - Llama 3.1 8B Instruct
@@ -264,7 +264,7 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 
 **Selection process:** Test top 3 candidates on a diverse set of inputs; measure validation pass rate and quality; choose the best quality/speed tradeoff.
 
-### 8.2 Inference Configuration
+### 7.2 Inference Configuration
 
 | Parameter | Value |
 |---|---|
@@ -272,7 +272,7 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 | Max tokens | 4096 |
 | Frequency/presence penalties | None (WDL requires repeated tokens) |
 
-### 8.3 Prompt Strategy
+### 7.3 Prompt Strategy
 
 **System prompt:**
 - WDL expert persona
@@ -296,11 +296,11 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 - Previous WDL attempt
 - Instruction to fix the specific errors
 
-### 8.4 LLM Hosting
+### 7.4 LLM Hosting
 
 Local laptop (CPU or GPU via Ollama)
 
-## 9. WDL Validation
+## 8. WDL Validation
 
 **Validation Steps:**
 
@@ -314,7 +314,7 @@ Local laptop (CPU or GPU via Ollama)
 - Retry up to 10 times (exact number TBD after testing)
 - If all retries fail: return the best attempt along with the remaining errors
 
-## 10. Tool Selection Module
+## 9. Tool Selection Module
 
 Identify and present recommended bioinformatics tools for user review before WDL generation.
 
@@ -325,13 +325,13 @@ Identify and present recommended bioinformatics tools for user review before WDL
 5. Approved tools are passed to the LLM prompt as explicit constraints
 6. Validation step confirms the approved tools (and only those tools) appear in the generated WDL
 
-## 11. Security & Privacy
+## 10. Security & Privacy
 
 All components run locally on the developer's laptop. No external service calls.
 
-## 12. Key Design Decisions
+## 11. Key Design Decisions
 
-### 12.1 Why a Local LLM?
+### 11.1 Why a Local LLM?
 
 **Decision:** Host the LLM locally via Ollama.
 
@@ -343,7 +343,7 @@ All components run locally on the developer's laptop. No external service calls.
 **Tradeoff:** Must manage local infrastructure, but the tool being free and private is a significant plus.
 
 
-### 12.2 Why RAG Instead of Fine-Tuning?
+### 11.2 Why RAG Instead of Fine-Tuning?
 
 **Decision:** Use RAG with curated examples rather than fine-tuning.
 
@@ -355,7 +355,7 @@ All components run locally on the developer's laptop. No external service calls.
 **Tradeoff:** May not perform as well as fine-tuning for edge cases, but RAG is usually sufficient and we can't fine-tune anyway at current resource levels.
 
 
-### 12.3 Why Human-in-the-Loop?
+### 11.3 Why Human-in-the-Loop?
 
 **Decision:** Require user review at tool selection and final WDL approval.
 
@@ -363,7 +363,7 @@ All components run locally on the developer's laptop. No external service calls.
 
 **Tradeoff:** Adds user review time, but improves confidence in outputs.
 
-## 13. Risks & Mitigations
+## 12. Risks & Mitigations
 
 | Risk | Impact | Likelihood | Mitigation |
 |---|---|---|---|
@@ -378,7 +378,7 @@ All components run locally on the developer's laptop. No external service calls.
 | Single developer | Medium | Low | Thorough documentation; managed scope; regular feedback |
 
 
-## 14. Deliverables
+## 13. Deliverables
 - [ ] LLM model selected (evaluated on test cases)
 - [ ] ChromaDB populated with 75 curated WDL examples
 - [ ] RAG pipeline functional
@@ -388,7 +388,7 @@ All components run locally on the developer's laptop. No external service calls.
 - [ ] Internal testing: 20 test cases
 
 
-## 15. Future Work
+## 14. Future Work
 
 - Streamlit web UI (web form, tool review page, WDL display with copy/download)
 - Deployment on Fred Hutch cluster (Docker Swarm or equivalent)
