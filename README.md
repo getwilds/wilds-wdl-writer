@@ -3,6 +3,6 @@ An LLM-based tool for building custom WDL workflows using validated components f
 
 Read the [Design Specifications](docs/mvp_design_spec.md)
 
---
+---
 
 ![Schema](docs/wdl_writer_0205.png)
