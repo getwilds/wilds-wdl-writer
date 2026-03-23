@@ -67,8 +67,6 @@ WDL workflows take a long time to write and require significant bioinformatics k
 
 ### 1.2 Users
 
-**Target Users**
-
 - **Primary:** Bioinformaticians
 - **Secondary:** Postdocs and grad students
 
@@ -82,14 +80,15 @@ WDL workflows take a long time to write and require significant bioinformatics k
 **In Scope:**
 
 - Interactive CLI for collecting user inputs
-- RAG retrieval over curated WILDS WDL Library examples
+- RAG retrieval over curated WILDS WDL Library examples and tool documentation
 - Human-in-the-loop tool bioinformatics approval checkpoint
 - WDL generation using a local LLM
-- WDL validation with automatic retry (`miniwdl check`, `sprocket lint`)
+- WDL validation with automatic retry
 - Human-in-the-loop final review and save to disk
 
 **Out of Scope:**
 
+- Fine-tuning LLMs
 - Web or graphical user interface
 - Cloud or cluster execution
 - Workflow execution (users run WDLs themselves)
@@ -99,27 +98,36 @@ WDL workflows take a long time to write and require significant bioinformatics k
 
 | Metric | Target |
 |---|---|
-| Syntax correctness | 100% of generated WDLs pass `miniwdl` and `sprocket` validation |
+| Syntax correctness | 100% (20/20) of generated WDLs pass `miniwdl` and `sprocket` validation |
 | Functional correctness | 95% (19/20) of generated WDLs use appropriate tools and parameters |
 | Latency: tool plan to user | <15 seconds |
 | Latency: full WDL generation | <1 hour |
-| Consistency (same inputs → same output) | ≥80% identical; non-identical outputs ≥85% lexical similarity ([`SequenceMatcher`](https://tedboy.github.io/python_stdlib/generated/generated/difflib.SequenceMatcher.html)) and ≥90% pairwise cosine similarity ([`sentence-transformers`](https://sbert.net/docs/quickstart.html)) |
+| Consistency (same inputs, same output) | ≥80% identical. Non-identical outputs ≥85% lexical similarity and ≥90% pairwise cosine similarity |
 
+**Latency Budget:**
+
+| Stage | Target |
+|---|---|
+| Input collection | Interactive (user-paced) |
+| RAG retrieval | <5 seconds |
+| Tool selection presentation | <15 seconds |
+| WDL generation | <1 hour |
+| Validation | <3 minutes |
+| **Total (no human review time)** | **<1 hour** |
 
 ## 3. User Stories
 
 - **US-1: Faster Than Manual Writing** — As a grad student creating a variant calling workflow, I want to generate a complete WDL in under an hour so that I can be more productive than writing it manually or iterating with ChatGPT.
-- **US-2: Tool Selection Control** — As a researcher with tool preferences, I want to review and approve which bioinformatics tools are used so that I can ensure the workflow uses tools I'm familiar with or that my lab prefers.
 - **US-2: Privacy Requirements** — As a researcher developing unpublished pipelines, I want to generate workflows without sending any information outside Fred Hutch so that I can use it with unpublished or sensitive pipeline designs.
-- **US-4: Handling Failures** — As a user whose WDL generation failed validation, I want to receive the best attempt with clear error messages so that I can either regenerate or manually fix the issues.
+- **US-3: WDL Validation** — As a user generating a WDL from scratch, I want to validate its syntax so that I can run it without error.
 
 ## 4. User Flow
 
 1. User runs the script and is prompted to select from pre-written values for:
-   - Input data types
-   - Analysis goals
-   - Optional: Preferred tools (exact list TBD)
-2. System retrieves relevant WDL examples and extracts tool recommendations
+   - Input data types (e.g. "Paired FASTQ")
+   - Analysis goals (e.g. "Variant Calling")
+   - Optional: Preferred tools (e.g. "GATK")
+2. System retrieves relevant WDL examples and tool documentation and extracts bioinformatics tool recommendations
 3. System displays a tool selection plan:
    - List of recommended tools (e.g., "BWA-MEM for alignment") with documentation links
    - User approves or rejects each tool; rejected tools show alternatives from the WILDS WDL Library (or "no alternatives" if none exist)
@@ -144,15 +152,14 @@ WDL workflows take a long time to write and require significant bioinformatics k
 
 **Step 2: RAG Retrieval**
 
-- Convert user input to a query string
-- Query the `wdl_tasks` ChromaDB collection using metadata filters (analysis category, input/output types); fall back to vector search if metadata filtering yields insufficient results
-- For each retrieved task, extract command-line invocations from the command block and query the `tool_docs` collection via vector search to retrieve relevant tool documentation
-- Retrieved context includes enriched task chunks and matching tool documentation
+1. Query the ChromaDB collection of WDL tasks using metadata filters (analysis category, input/output types)
+2. For each retrieved task, extract command-line invocations from the command block 
+3. Use command blocks to query the tool documentation collection via vector search
+4. Retrieved context includes metadata-enriched task chunks and relevant tool documentation
 
 **Step 3: Tool Selection**
 
 - Parse retrieved examples to identify candidate tools
-- Validate that all candidate tools are present in the WILDS WDL Library
 - Present tool list to user with documentation links and alternatives
 - Wait for user approval/modifications
 
@@ -160,20 +167,21 @@ WDL workflows take a long time to write and require significant bioinformatics k
 
 Combine into a single LLM prompt:
 - System prompt (WDL generation instructions)
-- Retrieved WDL examples (RAG context)
-- User specifications
+- Retrieved WDL examples and tool documentation (RAG context)
+- User input information
 - Approved tool list
 
 **Step 5: WDL Generation**
 
-- Send prompt to local LLM; display a progress message
+- Send prompt to local LLM
+- Display progress message
 
 **Step 6: Validation & Retry**
 
 1. Confirm that user-approved tools (and only those tools) appear in the WDL
    - If invalid: send back to LLM with a correction prompt
-2. Run `miniwdl check --strict` and `sprocket lint`
-   - If valid: proceed to Step 7
+2. Run linting (`sprocket lint`) and validation (`miniwdl check --strict`)
+   - If valid: proceed
    - If invalid: send validation errors back to LLM with a retry prompt; repeat up to 10 times
    - If all retries fail: return best attempt with errors attached
 
@@ -183,17 +191,6 @@ Combine into a single LLM prompt:
 - Prompt user to approve or reject
   - **Approve:** save to disk at user specified location
   - **Reject:** collect reason; retry generation once with that feedback appended to the prompt
-
-**Latency Budget:**
-
-| Stage | Target |
-|---|---|
-| Input collection | Interactive (user-paced) |
-| RAG retrieval | <5 seconds |
-| Tool selection presentation | <15 seconds |
-| WDL generation | <1 hour |
-| Validation | <3 minutes |
-| **Total (no human review time)** | **<1 hour** |
 
 
 ## 6. System Architecture
@@ -229,18 +226,16 @@ Combine into a single LLM prompt:
 
 ## 7. ChromaDB Vector Database
 
-### 7.1 Purpose
-
 Two ChromaDB collections support the RAG pipeline:
 
 - **`wdl_tasks`** — stores enriched WDL task chunks from the WILDS WDL Library. The primary retrieval mechanism is metadata filtering (analysis category, input/output types); vector search is available as a fallback when metadata filters return insufficient results.
 - **`tool_docs`** — stores chunked tool documentation. Queried via vector search using command-line invocations extracted from a retrieved task's command block.
 
-### 7.2 Document Structure (draft)
+### 7.1 Document Structure
 
 **`wdl_tasks` collection** — each document stored with:
 
-- **text:** WDL task code (enriched chunk)
+- **text:** WDL scripts chunked by task
 - **metadata:**
   - `task_name`
   - `description`
@@ -252,33 +247,14 @@ Two ChromaDB collections support the RAG pipeline:
 
 **`tool_docs` collection** — each document stored with:
 
-- **text:** Chunked tool documentation (flags, usage, examples)
+- **text:** Tool documentation chunked by tool command
 - **metadata:**
   - `tool_name`
   - `tool_version`
 
-### 7.3 Corpus Curation
+**Embedding Strategy**
 
-**`wdl_tasks` sources:**
-- WILDS WDL Library (Fred Hutch)
-- Synthetic pipeline examples composed from WILDS WDL Library modules
-
-**`wdl_tasks` target size:**
-- 75+ diverse examples (include all existing tasks and pipelines)
-
-**`wdl_tasks` diversity requirements:**
-- Major data types (FASTQ, BAM, VCF, BED, CSV, etc.)
-- Major analysis types (alignment, variant calling, RNA-seq, QC, etc.)
-- Multiple tool approaches for the same analysis
-
-**`tool_docs` sources:**
-- Official documentation for all tools referenced in the `wdl_tasks` collection
-
-### 7.4 Embedding Strategy
-
-- Use `sentence-transformers` with `all-MiniLM-L6-v2` (or similar) for both collections. This embedding is the ChromaDB default and is open-source.
-- `wdl_tasks`: embed a concatenation of description + metadata fields + partial WDL code
-- `tool_docs`: embed chunked documentation text directly; queries are constructed from extracted command-line invocations
+Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 
 ## 8. LLM Integration
 
@@ -351,35 +327,16 @@ Local laptop (CPU or GPU via Ollama)
 
 ## 10. Tool Selection Module
 
-### 10.1 Purpose
-
 Identify and present recommended bioinformatics tools for user review before WDL generation.
 
-### 10.2 Approach (draft)
+**Approach**
 
-1. Parse the top-ranked retrieved WDL examples to identify tools
-2. Aggregate tools by purpose (alignment, variant calling, etc.)
-3. Rank tools by frequency across retrieved examples and retrieval score
-4. Validate that all candidates are present in the WILDS WDL Library
-5. Present the top tool per purpose, with up to 3 alternatives
-
-### 10.3 Output Format
-
-For each recommended tool:
-- Tool name and version
-- Purpose in the workflow (e.g., "alignment")
-- Link to tool documentation
-
-### 10.4 User Interaction (CLI)
-
-For each tool:
-- **Approve** (default) — press 1 to accept
-- **Reject** — press 2 to reject, then select from a list of alternatives (or quit if no alternatives)
-
-### 10.5 Integration with WDL Generation
-
-- Approved tools are passed to the LLM prompt as explicit constraints
-- Validation step confirms the approved tools (and only those tools) appear in the generated WDL
+1. Parse the top-ranked retrieved WDL task metadata to identify tools
+2. Aggregate tools by purpose (alignment, variant calling, etc.). Store up to three alternatives.
+3. Present the top tool per purpose, along with category and documentation
+4. Users must approve or reject each tool. Alternatives are presented for rejected tools.
+5. Approved tools are passed to the LLM prompt as explicit constraints
+6. Validation step confirms the approved tools (and only those tools) appear in the generated WDL
 
 ## 11. Security & Privacy
 
@@ -387,13 +344,17 @@ All components run locally on the developer's laptop. No external service calls.
 
 ## 12. Key Design Decisions
 
-### 12.1 Why Human-in-the-Loop?
+### 12.1 Why a Local LLM?
 
-**Decision:** Require user review at tool selection and final WDL approval.
+**Decision:** Host the LLM locally via Ollama.
 
-**Rationale:** Gives users control over tool choice and final output, building trust in the generated workflows.
+**Rationale:**
+- **Cost:** No per-token API fees
+- **Privacy:** Research data does not leave the institution
+- **Control:** Full control over model selection and configuration
 
-**Tradeoff:** Adds user review time, but improves confidence in outputs.
+**Tradeoff:** Must manage local infrastructure, but the tool being free and private is a significant plus.
+
 
 ### 12.2 Why RAG Instead of Fine-Tuning?
 
@@ -406,39 +367,14 @@ All components run locally on the developer's laptop. No external service calls.
 
 **Tradeoff:** May not perform as well as fine-tuning for edge cases, but RAG is usually sufficient and we can't fine-tune anyway at current resource levels.
 
-### 12.3 Why a Local LLM?
 
-**Decision:** Host the LLM locally via Ollama.
+### 12.3 Why Human-in-the-Loop?
 
-**Rationale:**
-- **Cost:** No per-token API fees
-- **Privacy:** Research data does not leave the institution
-- **Control:** Full control over model selection and configuration
+**Decision:** Require user review at tool selection and final WDL approval.
 
-**Tradeoff:** Must manage local infrastructure, but the tool being free and private is a significant plus.
+**Rationale:** Gives users control over tool choice and final output, building trust in the generated workflows.
 
-### 12.4 Why No Session History?
-
-**Decision:** Don't persist session history.
-
-**Rationale:**
-- Simpler implementation (no file or database management)
-- No permission issues
-- Users can save the generated WDL for persistence
-- Can add session history in a later phase if needed
-
-**Tradeoff:** Users lose context when the script exits, but saving the WDL mitigates this.
-
-### 12.5 Why `all-MiniLM-L6-v2` for Embeddings?
-
-**Decision:** Use `sentence-transformers` with `all-MiniLM-L6-v2` for both collections.
-
-**Rationale:**
-- It is the ChromaDB default embedding model and should work well for most cases (including ours)
-- This embedding model is open-source
-
-**Tradeoff:** Larger or domain-specific models may produce better embeddings for bioinformatics text, but `all-MiniLM-L6-v2` is a well-established baseline and sufficient for an MVP.
-
+**Tradeoff:** Adds user review time, but improves confidence in outputs.
 
 ## 13. Risks & Mitigations
 
@@ -465,7 +401,7 @@ All components run locally on the developer's laptop. No external service calls.
 - [ ] Internal testing: 20 test cases
 
 
-## 15. Future Work (Phase 2+)
+## 15. Future Work
 
 - Streamlit web UI (web form, tool review page, WDL display with copy/download)
 - Deployment on Fred Hutch cluster (Docker Swarm or equivalent)
