@@ -2,13 +2,13 @@
 
 **Author:** Emma Bishop
 
-**Last modified:** 2026-03-23
+**Last modified:** 2026-04-01
 
 **Status:** Draft
 
-**Version:** 1.0
+**Version:** 1.0.1
 
-**Reviewers:** None yet
+**Reviewers:** (casually) Taylor Firman and Robert McDermott
 
 ## Table of Contents
 
@@ -207,7 +207,7 @@ Combine into a single LLM prompt:
 | Vector database | [ChromaDB](https://www.trychroma.com/) | Local, no server required |
 | Embeddings | [`sentence-transformers`](https://sbert.net/) | `all-MiniLM-L6-v2` or similar |
 | LLM runtime | [Ollama](https://ollama.com/) | Runs models locally; no external API calls |
-| LLM model | TBD — see Section 8 | Evaluated on WDL generation quality and speed |
+| LLM model | TBD | Evaluated on WDL generation quality and speed |
 | WDL validation | `miniwdl`, `sprocket` | Could possibly just use sprocket |
 | CLI | `click` | Can display options for user to enter |
 
@@ -255,8 +255,10 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 - CodeLlama 7B Instruct
 - Phi-3 Mini (3.8B)
 
+Check Fred Hutch policies and Data Governance guidelines around model choice. Some are blacklisted for security reasons.
+
 **Evaluation criteria:**
-- Runs on laptop (CPU or GPU)
+- Runs on laptop (GPU via [Apple M chips](https://www.apple.com/macbook-air/specs/))
 - WDL syntax correctness
 - Instruction following (uses only approved tools)
 - Consistency (same inputs → same outputs)
@@ -271,6 +273,8 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 | Temperature | 0.2 (low, for consistency) |
 | Max tokens | 4096 |
 | Frequency/presence penalties | None (WDL requires repeated tokens) |
+
+Note that while 4096 tokens isn't a lot, it should be sufficient for providing WDL task context to the LLM. We are not storing chat history level context.
 
 ### 7.3 Prompt Strategy
 
@@ -298,7 +302,7 @@ Use `sentence-transformers` with `all-MiniLM-L6-v2` for `tool_docs` collection.
 
 ### 7.4 LLM Hosting
 
-Local laptop (CPU or GPU via Ollama)
+Local laptop (GPU via [Apple M chips](https://www.apple.com/macbook-air/specs/))
 
 ## 8. WDL Validation
 
@@ -311,7 +315,7 @@ Local laptop (CPU or GPU via Ollama)
 **Retry Logic:**
 
 - On any validation failure, send errors back to the LLM with a correction prompt
-- Retry up to 10 times (exact number TBD after testing)
+- Retry up to 10 times (exact number TBD after testing, 10 may be high)
 - If all retries fail: return the best attempt along with the remaining errors
 
 ## 9. Tool Selection Module
@@ -349,7 +353,7 @@ All components run locally on the developer's laptop. No external service calls.
 
 **Rationale:**
 - Feasible with current resources — no ML expertise or large WDL training sets required
-- Fast, relatively easy to implement, and resource-efficient (no GPU required for indexing)
+- Fast, relatively easy to implement, and resource-efficient (no GPU required for indexing or metadata filtering)
 - Recommended in *AI Engineering* (Chip Huyen) as the right first step before considering fine-tuning
 
 **Tradeoff:** May not perform as well as fine-tuning for edge cases, but RAG is usually sufficient and we can't fine-tune anyway at current resource levels.
