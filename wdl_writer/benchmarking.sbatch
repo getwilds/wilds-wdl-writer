@@ -23,6 +23,22 @@
 #   sbatch --export=MODEL=gemma3:12b benchmarking.sbatch  # override model
 # ---------------------------------------------------------------------------
 
+# Loading necessary modules
+module load Apptainer/1.1.6 Python/3.12.3-GCCcore-13.3.0 sprocket/0.23.0
+
+# If a virtual environment exists, activate it
+# If not, create one and install the ollama Python client
+VENV_DIR="$HOME/venvs/ollama"
+if [ -d "$VENV_DIR" ]; then
+    echo "Activating existing virtual environment at $VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+else
+    echo "Creating virtual environment at $VENV_DIR"
+    python -m venv "$VENV_DIR"
+    source "$VENV_DIR/bin/activate"
+    pip install --no-cache-dir ollama
+fi
+
 # Configurable via --export or edit here
 MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
@@ -30,11 +46,11 @@ TIERS="${TIERS:-raw spec example}"
 SIF="${SIF:-ollama.sif}"
 
 # Store models on scratch to avoid filling home directory
-export OLLAMA_MODELS="${TMPDIR:-/tmp}/ollama_models"
+export OLLAMA_MODELS="$HOME/ollama_models"
 mkdir -p "$OLLAMA_MODELS"
 
 OLLAMA_HOST="http://localhost:11434"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$HOME"
 
 echo "============================================"
 echo "WDL Generation Benchmark"
@@ -51,6 +67,7 @@ echo "============================================"
 echo "Starting Ollama server..."
 apptainer run --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
+    --bind "$TMPDIR:$TMPDIR" \
     "$SIF" serve &
 OLLAMA_PID=$!
 
@@ -73,11 +90,12 @@ done
 echo "Pulling model: $MODEL"
 apptainer exec --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
+    --bind "$TMPDIR:$TMPDIR" \
     "$SIF" ollama pull "$MODEL"
 
 # --- Run the benchmark ---
 echo "Running benchmark..."
-python "$SCRIPT_DIR/benchmarking.py" \
+python -u "$SCRIPT_DIR/benchmarking.py" \
     --model "$MODEL" \
     --n-runs "$N_RUNS" \
     --tiers $TIERS \
