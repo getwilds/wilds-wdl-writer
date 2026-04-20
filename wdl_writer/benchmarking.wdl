@@ -7,7 +7,7 @@ workflow benchmark_wdl_generation {
     email: "wilds@fredhutch.org"
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
-      per_model_results: "One JSON file per model with full per-run results"
+      per_model_results: "One JSON file per model with full per-run results",
       combined_summary: "Single JSON merging all models for cross-model comparison"
     }
   }
@@ -54,7 +54,7 @@ task run_benchmark {
     email: "wilds@fredhutch.org"
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
-      results_json: "Per-run pass/fail results for all tiers and test cases"
+      results_json: "Per-run pass/fail results for all tiers and test cases",
       server_log: "Ollama server stdout/stderr for debugging"
     }
   }
