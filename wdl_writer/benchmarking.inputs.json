@@ -2,7 +2,6 @@
   "benchmark_wdl_generation.models": [
     "llama3.1:8b",
     "gemma3:12b",
-    "qwen2.5-coder:7b",
     "phi4:14b",
     "mistral:7b"
   ],
