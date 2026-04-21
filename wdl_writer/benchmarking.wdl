@@ -120,7 +120,7 @@ task run_benchmark {
   }
 
   runtime {
-    docker: "getwilds/ollama:0.5.4"
+    docker: "getwilds/ollama:0.21.0"
     cpu: cpu_cores
     memory: "~{memory_gb} GB"
     gpus: "1"
@@ -170,7 +170,7 @@ task merge_results {
   }
 
   runtime {
-    docker: "getwilds/ollama:0.5.4"
+    docker: "getwilds/ollama:0.21.0"
     cpu: cpu_cores
     memory: "~{memory_gb} GB"
   }
