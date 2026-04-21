@@ -123,7 +123,7 @@ task run_benchmark {
     docker: "getwilds/ollama:0.5.4"
     cpu: cpu_cores
     memory: "~{memory_gb} GB"
-    gpu: "1"
+    gpus: "1"
   }
 }
 
