@@ -1,0 +1,34 @@
+# WDL source files (fetched at runtime)
+data/wdl/*
+!data/wdl/.gitkeep
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# macOS
+.DS_Store
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
