@@ -16,14 +16,14 @@ workflow benchmark_wdl_generation {
     models: "List of Ollama model tags to benchmark (e.g., ['llama3.1:8b', 'gemma3:12b'])"
     benchmark_script: "Python benchmarking script to execute inside each task"
     n_runs: "Number of generations per test case per tier"
-    tiers: "Prompt tiers to evaluate (raw, spec, example)"
+    tiers: "Prompt tiers to evaluate (raw, spec, spec_plus_example)"
   }
 
   input {
     Array[String] models
     File benchmark_script
     Int n_runs = 5
-    Array[String] tiers = ["raw", "spec", "example"]
+    Array[String] tiers = ["raw", "spec", "spec_plus_example"]
   }
 
   scatter (model in models) {

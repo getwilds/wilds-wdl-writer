@@ -3,12 +3,12 @@
 
 Evaluates how well local open-source LLMs (served via Ollama) generate valid
 WDL, graded by `sprocket check`. Runs each test prompt across multiple prompt
-tiers (raw, spec, example) to measure how much WDL-specific context helps.
+tiers (raw, spec, spec_plus_example) to measure how much WDL-specific context helps.
 
 Usage:
-    python benchmarking.py                          # all defaults
-    python benchmarking.py --model gemma3:4b        # specific model
-    python benchmarking.py --tiers raw example      # subset of tiers
+    python benchmarking.py                                      # all defaults
+    python benchmarking.py --model gemma3:4b                    # specific model
+    python benchmarking.py --tiers raw spec_plus_example        # subset of tiers
     python benchmarking.py --n-runs 10              # more runs per case
     python benchmarking.py --host http://host:11434 # remote Ollama server
 """
@@ -63,7 +63,7 @@ WORKFLOW STRUCTURE:
 
 TYPES: String, Int, Float, Boolean, File, Array[T], Map[K,V], Pair[L,R], T? (optional)
 """,
-    "example": """\
+    "spec_plus_example": """\
 You are an expert in WDL (Workflow Description Language) version 1.0.
 Respond only with valid WDL code inside a ```wdl code block.
 
@@ -233,7 +233,7 @@ def validate_wdl(wdl_text: str) -> dict:
         os.unlink(path)
 
 
-def generate(client: Client, model: str, prompt: str, tier: str = "example") -> str:
+def generate(client: Client, model: str, prompt: str, tier: str = "spec_plus_example") -> str:
     """Call the model via Ollama with the specified prompt tier."""
     response = client.chat(
         model=model,

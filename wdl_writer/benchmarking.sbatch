@@ -42,7 +42,7 @@ fi
 # Configurable via --export or edit here
 MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
-TIERS="${TIERS:-raw spec example}"
+TIERS="${TIERS:-raw spec spec_plus_example}"
 SIF="${SIF:-ollama.sif}"
 
 # Store models on scratch to avoid filling home directory
