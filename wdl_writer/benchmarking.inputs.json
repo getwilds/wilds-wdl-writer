@@ -1,0 +1,11 @@
+{
+  "benchmark_wdl_generation.models": [
+    "llama3.1:8b",
+    "gemma3:12b",
+    "phi4:14b",
+    "mistral:7b"
+  ],
+  "benchmark_wdl_generation.benchmark_script": "wdl_writer/benchmarking.py",
+  "benchmark_wdl_generation.n_runs": 5,
+  "benchmark_wdl_generation.tiers": ["raw", "spec", "spec_plus_example"]
+}
