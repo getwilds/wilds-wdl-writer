@@ -226,20 +226,20 @@ Two ChromaDB collections support the RAG pipeline:
 
 - **text:** WDL scripts chunked by task
 - **metadata:**
-  - `task_name`
-  - `description`
-  - `analysis_category` — e.g. `"variant_calling"`
-  - `input_types` — e.g. `["FASTQ"]`
-  - `output_types` — e.g. `["VCF", "BAM"]`
-  - `tools` — structured array with name, version, purpose, and link to docs
-  - `docker_images`
+  - `tool` - e.g. `"strelka"`
+  - `task` - e.g. `"strelka_germline"`
+  - `topic` - e.g. `["genomics", "dna_polymorphism"]`
+  - `species` - e.g. `["eukaryote"]`
+  - `operation` - e.g. `"variant_calling"`
+  - `input_sample_data_types` - e.g. `["nucleic_acid_sequence_alignment", "data_index"]`
+  - `input_sample_format_types` - e.g. `["bam", "bai"]`
+  - `output_sample_data_types` - e.g. `["sequence_variations", "data_index"]`
 
 **`tool_docs` collection** — each document stored with:
 
 - **text:** Tool documentation chunked by tool command
 - **metadata:**
-  - `tool_name`
-  - `tool_version`
+  - `tool`
 
 **Embedding Strategy**
 
