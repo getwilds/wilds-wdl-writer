@@ -46,7 +46,7 @@ fi
 MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
 TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
-SIF="${SIF:-ollama.sif}"
+SIF="${SIF:-ollama_0.21.0.sif}"
 BUNDLE="${BUNDLE:-$HOME/bundle.zip}"
 
 # Store models on scratch to avoid filling home directory
@@ -75,10 +75,10 @@ echo "============================================"
 
 # --- Start Ollama server in the background ---
 echo "Starting Ollama server..."
-apptainer run --nv \
+apptainer exec --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
     --bind "$TMPDIR:$TMPDIR" \
-    "$SIF" serve &
+    "$SIF" ollama serve &
 OLLAMA_PID=$!
 
 # Wait for server to be ready
