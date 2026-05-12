@@ -14,23 +14,23 @@ workflow benchmark_wdl_generation {
 
   parameter_meta {
     models: "List of Ollama model tags to benchmark (e.g., ['llama3.1:8b', 'gemma3:12b'])"
-    benchmark_script: "Python benchmarking script to execute inside each task"
+    bundle: "Zip archive of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json)"
     n_runs: "Number of generations per test case per tier"
-    tiers: "Prompt tiers to evaluate (raw, spec, spec_plus_example)"
+    tiers: "Prompt tiers to evaluate (raw, spec, spec_plus_example, spec_plus_wilds, full)"
   }
 
   input {
     Array[String] models
-    File benchmark_script
+    File bundle
     Int n_runs = 5
-    Array[String] tiers = ["raw", "spec", "spec_plus_example"]
+    Array[String] tiers = ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full"]
   }
 
   scatter (model in models) {
     call run_benchmark {
       input:
         model = model,
-        benchmark_script = benchmark_script,
+        bundle = bundle,
         n_runs = n_runs,
         tiers = tiers,
     }
@@ -61,7 +61,7 @@ task run_benchmark {
 
   parameter_meta {
     model: "Ollama model tag to pull and benchmark"
-    benchmark_script: "Python benchmarking script"
+    bundle: "Zip archive of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json)"
     n_runs: "Generations per tier per test case"
     tiers: "Prompt tiers to evaluate"
     cpu_cores: "Number of CPU cores"
@@ -70,7 +70,7 @@ task run_benchmark {
 
   input {
     String model
-    File benchmark_script
+    File bundle
     Int n_runs
     Array[String] tiers
     Int cpu_cores = 4
@@ -81,6 +81,13 @@ task run_benchmark {
 
   command <<<
     set -eo pipefail
+
+    # Unpack the bundle in place. The zip must contain benchmarking.py,
+    # prompts.py, prompts/, and benchmarking_cases.json at the top level
+    # so `from prompts import ...` resolves correctly.
+    # TODO: Once wilds-wdl-writer is public, replace this with a git clone
+    # and drop the `bundle` input (see build_bundle.sh).
+    unzip -q ~{bundle}
 
     export OLLAMA_HOST="http://127.0.0.1:11434"
     export OLLAMA_MODELS="$PWD/ollama_models"
@@ -106,11 +113,12 @@ task run_benchmark {
     echo "Pulling ~{model}..."
     ollama pull "~{model}"
 
-    python3 -u ~{benchmark_script} \
+    python3 -u benchmarking.py \
       --model "~{model}" \
       --n-runs ~{n_runs} \
       --tiers ~{sep=" " tiers} \
       --host "$OLLAMA_HOST" \
+      --cases benchmarking_cases.json \
       --output "results_~{safe_name}.json"
   >>>
 
