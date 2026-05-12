@@ -1,8 +1,10 @@
 #!/bin/bash
-# Build bundle.zip for the benchmarking WDL.
+# Build bundle.tar.gz for the benchmarking WDL.
 # Contains everything benchmarking.py needs to run inside a WDL task:
 # the script itself, the prompts module, the prompts/ directory, and
 # the test cases JSON.
+#
+# Tarball (not zip) because the getwilds/ollama image has tar but not unzip.
 #
 # NOTE: This bundling step is a stopgap while the wilds-wdl-writer repo is
 # private. Once the repo is public, both benchmarking.wdl and benchmarking.sbatch
@@ -15,16 +17,15 @@ set -eo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-OUT="bundle.zip"
+OUT="bundle.tar.gz"
 rm -f "$OUT"
 
-zip -r "$OUT" \
+tar --exclude='*/__pycache__' --exclude='*.pyc' -czf "$OUT" \
   benchmarking.py \
   prompts.py \
   prompts/ \
   benchmarking_cases.json \
-  summarize.py \
-  -x '*/__pycache__/*' '*.pyc'
+  summarize.py
 
 echo "Built $SCRIPT_DIR/$OUT"
-unzip -l "$OUT"
+tar -tzf "$OUT"

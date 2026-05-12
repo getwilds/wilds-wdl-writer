@@ -17,13 +17,13 @@
 # Prerequisites (one-time setup on login node):
 #   apptainer pull ollama.sif docker://ollama/ollama
 #   pip install ollama  (or into a venv/conda env)
-#   ./build_bundle.sh && cp bundle.zip $HOME/   # build and stage the bundle
+#   ./build_bundle.sh && cp bundle.tar.gz $HOME/   # build and stage the bundle
 #   (the bundle step goes away once the repo is public — see build_bundle.sh)
 #
 # Usage:
 #   sbatch benchmarking.sbatch                         # defaults
 #   sbatch --export=MODEL=gemma3:12b benchmarking.sbatch  # override model
-#   sbatch --export=BUNDLE=$HOME/bundle.zip benchmarking.sbatch  # override bundle path
+#   sbatch --export=BUNDLE=$HOME/bundle.tar.gz benchmarking.sbatch  # override bundle path
 # ---------------------------------------------------------------------------
 
 # Loading necessary modules
@@ -47,7 +47,7 @@ MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
 TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
 SIF="${SIF:-ollama_0.21.0.sif}"
-BUNDLE="${BUNDLE:-$HOME/bundle.zip}"
+BUNDLE="${BUNDLE:-$HOME/bundle.tar.gz}"
 
 # Store models on scratch to avoid filling home directory
 export OLLAMA_MODELS="$HOME/ollama_models"
@@ -58,7 +58,7 @@ OLLAMA_HOST="http://localhost:11434"
 # Unpack the bundle into a per-job working dir so concurrent jobs don't collide
 RUN_DIR="$TMPDIR/wdl_writer_run_${SLURM_JOB_ID:-$$}"
 mkdir -p "$RUN_DIR"
-unzip -q "$BUNDLE" -d "$RUN_DIR"
+tar -xzf "$BUNDLE" -C "$RUN_DIR"
 
 echo "============================================"
 echo "WDL Generation Benchmark"

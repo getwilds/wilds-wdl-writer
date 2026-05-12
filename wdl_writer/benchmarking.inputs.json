@@ -5,7 +5,7 @@
     "phi4:14b",
     "mistral:7b"
   ],
-  "benchmark_wdl_generation.bundle": "wdl_writer/bundle.zip",
+  "benchmark_wdl_generation.bundle": "wdl_writer/bundle.tar.gz",
   "benchmark_wdl_generation.n_runs": 5,
   "benchmark_wdl_generation.tiers": ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full"]
 }

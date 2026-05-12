@@ -23,7 +23,7 @@ dist/
 build/
 *.egg-info/
 *.egg
-wdl_writer/bundle.zip
+wdl_writer/bundle.tar.gz
 
 # macOS
 .DS_Store

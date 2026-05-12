@@ -15,7 +15,7 @@ workflow benchmark_wdl_generation {
 
   parameter_meta {
     models: "List of Ollama model tags to benchmark (e.g., ['llama3.1:8b', 'gemma3:12b'])"
-    bundle: "Zip archive of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json)"
+    bundle: "Tarball (tar.gz) of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json, summarize.py)"
     n_runs: "Number of generations per test case per tier"
     tiers: "Prompt tiers to evaluate (raw, spec, spec_plus_example, spec_plus_wilds, full)"
   }
@@ -64,7 +64,7 @@ task run_benchmark {
 
   parameter_meta {
     model: "Ollama model tag to pull and benchmark"
-    bundle: "Zip archive of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json)"
+    bundle: "Tarball (tar.gz) of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json, summarize.py)"
     n_runs: "Generations per tier per test case"
     tiers: "Prompt tiers to evaluate"
     cpu_cores: "Number of CPU cores"
@@ -85,12 +85,12 @@ task run_benchmark {
   command <<<
     set -eo pipefail
 
-    # Unpack the bundle in place. The zip must contain benchmarking.py,
+    # Unpack the bundle in place. The tarball must contain benchmarking.py,
     # prompts.py, prompts/, and benchmarking_cases.json at the top level
     # so `from prompts import ...` resolves correctly.
     # TODO: Once wilds-wdl-writer is public, replace this with a git clone
     # and drop the `bundle` input (see build_bundle.sh).
-    unzip -q ~{bundle}
+    tar -xzf ~{bundle}
 
     export OLLAMA_HOST="http://127.0.0.1:11434"
     export OLLAMA_MODELS="$PWD/ollama_models"
@@ -152,7 +152,7 @@ task merge_results {
 
   parameter_meta {
     per_model_json: "Array of per-model result JSON files from run_benchmark"
-    bundle: "Zip archive of the wdl_writer package (provides summarize.py)"
+    bundle: "Tarball (tar.gz) of the wdl_writer package (provides summarize.py)"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
   }
@@ -166,7 +166,7 @@ task merge_results {
 
   command <<<
     set -eo pipefail
-    unzip -q ~{bundle}
+    tar -xzf ~{bundle}
     python3 summarize.py ~{sep=" " per_model_json}
   >>>
 
