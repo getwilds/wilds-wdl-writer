@@ -8,7 +8,8 @@ workflow benchmark_wdl_generation {
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
       per_model_results: "One JSON file per model with full per-run results",
-      combined_summary: "Single JSON merging all models for cross-model comparison"
+      combined_summary: "Single JSON merging all models for cross-model comparison",
+      summary_md: "Human-readable markdown summary (model x tier grid and per-case breakdown)"
     }
   }
 
@@ -39,11 +40,13 @@ workflow benchmark_wdl_generation {
   call merge_results {
     input:
       per_model_json = run_benchmark.results_json,
+      bundle = bundle,
   }
 
   output {
     Array[File] per_model_results = run_benchmark.results_json
     File combined_summary = merge_results.summary_json
+    File summary_md = merge_results.summary_md
   }
 }
 
@@ -137,44 +140,39 @@ task run_benchmark {
 
 task merge_results {
   meta {
-    description: "Combines per-model benchmark JSONs into a single summary for cross-model comparison"
+    description: "Combines per-model benchmark JSONs into a single summary for cross-model comparison and renders a markdown table"
     author: "Fred Hutch WILDS Team"
     email: "wilds@fredhutch.org"
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
-      summary_json: "Combined results across all benchmarked models"
+      summary_json: "Combined results across all benchmarked models",
+      summary_md: "Human-readable markdown summary (model x tier grid and per-case breakdown)"
     }
   }
 
   parameter_meta {
     per_model_json: "Array of per-model result JSON files from run_benchmark"
+    bundle: "Zip archive of the wdl_writer package (provides summarize.py)"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
   }
 
   input {
     Array[File] per_model_json
+    File bundle
     Int cpu_cores = 1
     Int memory_gb = 2
   }
 
   command <<<
     set -eo pipefail
-    python3 <<'PY'
-    import json
-    paths = "~{sep=' ' per_model_json}".split()
-    combined = []
-    for p in paths:
-        with open(p) as f:
-            combined.extend(json.load(f))
-    with open("combined_summary.json", "w") as f:
-        json.dump(combined, f, indent=2)
-    print(f"Merged {len(paths)} model result files -> {len(combined)} tier records")
-    PY
+    unzip -q ~{bundle}
+    python3 summarize.py ~{sep=" " per_model_json}
   >>>
 
   output {
     File summary_json = "combined_summary.json"
+    File summary_md = "combined_summary.md"
   }
 
   runtime {

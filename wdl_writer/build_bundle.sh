@@ -23,6 +23,7 @@ zip -r "$OUT" \
   prompts.py \
   prompts/ \
   benchmarking_cases.json \
+  summarize.py \
   -x '*/__pycache__/*' '*.pyc'
 
 echo "Built $SCRIPT_DIR/$OUT"
