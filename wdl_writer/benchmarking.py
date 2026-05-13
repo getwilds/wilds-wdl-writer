@@ -91,7 +91,13 @@ def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: l
                 raw = generate(client, model, case, tier=tier)
                 wdl = extract_wdl(raw)
                 check = validate_wdl(wdl)
-                runs.append({"run": i, "valid": check["valid"], "stderr": check["stderr"]})
+                runs.append({
+                    "run": i,
+                    "valid": check["valid"],
+                    "stderr": check["stderr"],
+                    "raw_response": raw,
+                    "extracted_wdl": wdl,
+                })
                 if check["valid"]:
                     passes += 1
                 print(f"    run {i+1}: {'PASS' if check['valid'] else 'FAIL'}")
