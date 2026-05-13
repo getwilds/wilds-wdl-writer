@@ -1,4 +1,4 @@
-version 1.0
+version 1.2
 
 workflow benchmark_wdl_generation {
   meta {
@@ -132,9 +132,9 @@ task run_benchmark {
 
   runtime {
     docker: "getwilds/ollama:0.21.0"
+    gpu: true
     cpu: cpu_cores
     memory: "~{memory_gb} GB"
-    gpus: "1"
   }
 }
 
