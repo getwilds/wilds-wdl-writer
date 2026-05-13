@@ -26,6 +26,21 @@ def format_pct(rate: float) -> str:
     return f"{rate:.0%}"
 
 
+def format_pair(rec: dict | None) -> str:
+    """Render a cell as 'first → final' if retries happened, else just 'final'."""
+    if rec is None:
+        return "—"
+    final = rec["avg_pass_rate"]
+    first = rec.get("avg_first_attempt_pass_rate", final)
+    return format_pct(final) if first == final else f"{format_pct(first)} → {format_pct(final)}"
+
+
+def format_case_pair(case: dict) -> str:
+    final = case["pass_rate"]
+    first = case.get("first_attempt_pass_rate", final)
+    return format_pct(final) if first == final else f"{format_pct(first)} → {format_pct(final)}"
+
+
 TIER_ORDER = ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full"]
 
 
@@ -38,9 +53,13 @@ def render_markdown(records: list[dict]) -> str:
     case_ids = sorted({c["id"] for r in records for c in r["cases"]})
 
     by_key = {(r["model"], r["tier"]): r for r in records}
+    has_retry = any("avg_first_attempt_pass_rate" in r for r in records)
 
     out = ["# WDL Generation Benchmark — Summary", ""]
     out.append(f"Models: {len(models)} | Tiers: {len(tiers)} | Cases: {len(case_ids)}")
+    if has_retry:
+        out.append("")
+        out.append("Cells show `first_attempt → final` pass rate when retries changed the outcome, else just the final rate.")
     out.append("")
 
     # Headline: model x tier grid of avg pass rates
@@ -52,8 +71,7 @@ def render_markdown(records: list[dict]) -> str:
     for model in models:
         row = [model]
         for tier in tiers:
-            rec = by_key.get((model, tier))
-            row.append(format_pct(rec["avg_pass_rate"]) if rec else "—")
+            row.append(format_pair(by_key.get((model, tier))))
         out.append("| " + " | ".join(row) + " |")
     out.append("")
 
@@ -75,11 +93,11 @@ def render_markdown(records: list[dict]) -> str:
             rec = by_key.get((model, tier))
             if not rec:
                 continue
-            case_rates = {c["id"]: c["pass_rate"] for c in rec["cases"]}
+            cases_by_id = {c["id"]: c for c in rec["cases"]}
             row = [tier]
             for cid in case_ids:
-                row.append(format_pct(case_rates[cid]) if cid in case_rates else "—")
-            row.append(format_pct(rec["avg_pass_rate"]))
+                row.append(format_case_pair(cases_by_id[cid]) if cid in cases_by_id else "—")
+            row.append(format_pair(rec))
             out.append("| " + " | ".join(row) + " |")
         out.append("")
 

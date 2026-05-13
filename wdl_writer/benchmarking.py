@@ -27,7 +27,7 @@ import json
 from pathlib import Path
 from ollama import Client
 
-from prompts import PROMPT_CONFIGS, build_system, build_user
+from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
 
@@ -62,20 +62,59 @@ def validate_wdl(wdl_text: str) -> dict:
         os.unlink(path)
 
 
-def generate(client: Client, model: str, case: dict, tier: str = "full") -> str:
-    """Call the model via Ollama, rendering both system and user prompts."""
-    template_vars = {k: v for k, v in case.items() if k != "id"}
-    response = client.chat(
-        model=model,
-        messages=[
-            {"role": "system", "content": build_system(**PROMPT_CONFIGS[tier])},
-            {"role": "user", "content": build_user(template_vars)},
-        ],
-    )
+def chat_call(client: Client, model: str, messages: list[dict]) -> str:
+    """Single chat completion. Returns the assistant message content."""
+    response = client.chat(model=model, messages=messages)
     return response["message"]["content"]
 
 
-def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict]) -> list[dict]:
+def initial_messages(case: dict, tier: str) -> list[dict]:
+    """Build the [system, user] message list for the first attempt."""
+    template_vars = {k: v for k, v in case.items() if k != "id"}
+    return [
+        {"role": "system", "content": build_system(**PROMPT_CONFIGS[tier])},
+        {"role": "user", "content": build_user(template_vars)},
+    ]
+
+
+def generate_with_retry(client: Client, model: str, case: dict, tier: str, max_retries: int) -> dict:
+    """Generate WDL, retrying on validation failure with the error fed back.
+
+    Returns a dict with the final outcome plus per-attempt history.
+    """
+    messages = initial_messages(case, tier)
+    attempts = []
+
+    for attempt_idx in range(max_retries + 1):
+        raw = chat_call(client, model, messages)
+        wdl = extract_wdl(raw)
+        check = validate_wdl(wdl)
+        attempts.append({
+            "attempt": attempt_idx,
+            "valid": check["valid"],
+            "stderr": check["stderr"],
+            "raw_response": raw,
+            "extracted_wdl": wdl,
+        })
+        if check["valid"] or attempt_idx == max_retries:
+            break
+        # Continue the conversation: include the failed WDL and the sprocket error.
+        messages.append({"role": "assistant", "content": raw})
+        messages.append({"role": "user", "content": build_retry(check["stderr"])})
+
+    final = attempts[-1]
+    return {
+        "valid": final["valid"],
+        "stderr": final["stderr"],
+        "raw_response": final["raw_response"],
+        "extracted_wdl": final["extracted_wdl"],
+        "attempts": attempts,
+        "first_attempt_valid": attempts[0]["valid"],
+        "attempts_used": len(attempts),
+    }
+
+
+def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int) -> list[dict]:
     """Run the eval across prompt tiers and test cases."""
     all_results = []
     for tier in tiers:
@@ -86,34 +125,34 @@ def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: l
         for case in cases:
             print(f"\n  --- {case['id']} ---")
             passes = 0
+            first_passes = 0
             runs = []
             for i in range(n_runs):
-                raw = generate(client, model, case, tier=tier)
-                wdl = extract_wdl(raw)
-                check = validate_wdl(wdl)
-                runs.append({
-                    "run": i,
-                    "valid": check["valid"],
-                    "stderr": check["stderr"],
-                    "raw_response": raw,
-                    "extracted_wdl": wdl,
-                })
-                if check["valid"]:
+                result = generate_with_retry(client, model, case, tier, max_retries)
+                runs.append({"run": i, **result})
+                if result["valid"]:
                     passes += 1
-                print(f"    run {i+1}: {'PASS' if check['valid'] else 'FAIL'}")
-                if not check["valid"]:
-                    print(f"      {check['stderr'][:200]}")
+                if result["first_attempt_valid"]:
+                    first_passes += 1
+                status = "PASS" if result["valid"] else "FAIL"
+                attempts = result["attempts_used"]
+                attempt_note = f" (attempt {attempts})" if attempts > 1 else ""
+                print(f"    run {i+1}: {status}{attempt_note}")
+                if not result["valid"]:
+                    print(f"      {result['stderr'][:200]}")
             tier_results.append({
                 "id": case["id"],
                 "pass_rate": passes / n_runs,
+                "first_attempt_pass_rate": first_passes / n_runs,
                 "runs": runs,
             })
-            print(f"    -> {passes}/{n_runs} passed")
+            print(f"    -> {passes}/{n_runs} passed (first attempt: {first_passes}/{n_runs})")
         all_results.append({
             "model": model,
             "tier": tier,
             "cases": tier_results,
             "avg_pass_rate": sum(r["pass_rate"] for r in tier_results) / len(tier_results),
+            "avg_first_attempt_pass_rate": sum(r["first_attempt_pass_rate"] for r in tier_results) / len(tier_results),
         })
 
     return all_results
@@ -132,20 +171,22 @@ def main():
     parser.add_argument("--host", default="http://localhost:11434", help="Ollama server URL (default: http://localhost:11434)")
     parser.add_argument("--output", default="results.json", help="Output JSON file (default: results.json)")
     parser.add_argument("--cases", default=str(DEFAULT_CASES_PATH), help=f"Test case JSON file (default: {DEFAULT_CASES_PATH.name})")
+    parser.add_argument("--max-retries", type=int, default=3, help="Max validator-feedback retries per run (default: 3, 0 disables)")
     args = parser.parse_args()
 
     with open(args.cases) as f:
         cases = json.load(f)
 
-    print(f"Model:  {args.model}")
-    print(f"Tiers:  {', '.join(args.tiers)}")
-    print(f"Runs:   {args.n_runs} per case per tier")
-    print(f"Host:   {args.host}")
-    print(f"Cases:  {args.cases} ({len(cases)} cases)")
-    print(f"Output: {args.output}")
+    print(f"Model:       {args.model}")
+    print(f"Tiers:       {', '.join(args.tiers)}")
+    print(f"Runs:        {args.n_runs} per case per tier")
+    print(f"Max retries: {args.max_retries}")
+    print(f"Host:        {args.host}")
+    print(f"Cases:       {args.cases} ({len(cases)} cases)")
+    print(f"Output:      {args.output}")
 
     client = Client(host=args.host)
-    results = run_eval(client, args.model, args.n_runs, args.tiers, cases)
+    results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries)
 
     with open(args.output, "w") as f:
         json.dump(results, f, indent=2)
@@ -154,11 +195,11 @@ def main():
     print(f"\n{'='*60}")
     print("SUMMARY")
     print(f"{'='*60}")
-    print(f"{'Tier':<12} {'Avg Pass Rate':>14}   Per-case breakdown")
-    print(f"{'-'*12} {'-'*14}   {'-'*40}")
+    print(f"{'Tier':<20} {'1st':>5}  {'Final':>5}   Per-case (final)")
+    print(f"{'-'*20} {'-'*5}  {'-'*5}   {'-'*40}")
     for tr in results:
         case_rates = "  ".join(f"{c['id']}:{c['pass_rate']:.0%}" for c in tr["cases"])
-        print(f"{tr['tier']:<12} {tr['avg_pass_rate']:>13.0%}   {case_rates}")
+        print(f"{tr['tier']:<20} {tr['avg_first_attempt_pass_rate']:>4.0%}  {tr['avg_pass_rate']:>4.0%}    {case_rates}")
 
 
 if __name__ == "__main__":

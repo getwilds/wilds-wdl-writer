@@ -18,6 +18,7 @@ _SPEC = (_PROMPTS_DIR / "system_spec.md").read_text()
 _EXAMPLE = (_PROMPTS_DIR / "system_example.md").read_text()
 _WILDS = (_PROMPTS_DIR / "system_wilds.md").read_text()
 _USER_TEMPLATE = (_PROMPTS_DIR / "user_template.md").read_text()
+_RETRY = (_PROMPTS_DIR / "retry_prompt.md").read_text()
 
 # Bare-bones system prompt used by the "raw" benchmarking tier — no WDL
 # context at all, just a code-fence instruction. Kept inline because it's
@@ -55,6 +56,11 @@ def build_user(template_vars: dict[str, str]) -> str:
     for key, value in template_vars.items():
         result = result.replace(f"{{{{{key}}}}}", value)
     return result
+
+
+def build_retry(stderr: str) -> str:
+    """Render the retry prompt with the validator's error output."""
+    return _RETRY.replace("{{stderr}}", stderr)
 
 
 # Ablation tiers for benchmarking. Each value is kwargs for build_system().
