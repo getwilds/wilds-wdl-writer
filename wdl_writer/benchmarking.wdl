@@ -93,8 +93,8 @@ task run_benchmark {
     tar -xzf ~{bundle}
 
     export OLLAMA_HOST="http://127.0.0.1:11434"
-    export OLLAMA_MODELS="$PWD/ollama_models"
-    mkdir -p "$OLLAMA_MODELS"
+    # OLLAMA_MODELS is set by the sprocket config via --env, pointing at a
+    # persistent host bind mount so models pulled across runs are cached.
 
     ollama serve > ollama_server.log 2>&1 &
     SERVER_PID=$!

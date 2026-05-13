@@ -12,8 +12,10 @@ extra_apptainer_exec_args = [
     "--bind", "/app/lmod:/app/lmod",
     "--bind", "/app/modules/all:/app/modules/all",
     "--bind", "/app/software:/app/software",
+    "--bind", "/home/tfirman/.ollama/models:/ollama_models",
     "--env", "MODULEPATH=/app/modules/all",
     "--env", "LMOD_CMD=/app/lmod/lmod/libexec/lmod",
+    "--env", "OLLAMA_MODELS=/ollama_models",
 ]
 
 # Define CPU slurm partition as necessary ("campus-new" or "short" for FH users)
