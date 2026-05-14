@@ -4,5 +4,5 @@
   ],
   "benchmark_wdl_generation.bundle": "wdl_writer/bundle.tar.gz",
   "benchmark_wdl_generation.n_runs": 2,
-  "benchmark_wdl_generation.tiers": ["spec", "full"]
+  "benchmark_wdl_generation.tiers": ["full_plus_rag"]
 }
