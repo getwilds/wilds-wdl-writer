@@ -1,8 +1,11 @@
 {
   "benchmark_wdl_generation.models": [
-    "gemma4:31b"
+    "gemma4:31b",
+    "gemma4:26b",
+    "phi4:14b",
+    "mixtral:8x7b"
   ],
   "benchmark_wdl_generation.bundle": "wdl_writer/bundle.tar.gz",
-  "benchmark_wdl_generation.n_runs": 2,
-  "benchmark_wdl_generation.tiers": ["full_plus_rag"]
+  "benchmark_wdl_generation.n_runs": 10,
+  "benchmark_wdl_generation.tiers": ["full_plus_rag", "full"]
 }
