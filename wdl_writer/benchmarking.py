@@ -28,6 +28,7 @@ from pathlib import Path
 from ollama import Client
 
 from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
+from retrieval import retrieve_tasks
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
 
@@ -71,8 +72,13 @@ def chat_call(client: Client, model: str, messages: list[dict]) -> str:
 def initial_messages(case: dict, tier: str) -> list[dict]:
     """Build the [system, user] message list for the first attempt."""
     template_vars = {k: v for k, v in case.items() if k != "id"}
+    # Split RAG flag out of the config since build_system() doesn't know about it.
+    config = {**PROMPT_CONFIGS[tier]}
+    use_rag = config.pop("use_rag", False)
+    if use_rag:
+        config["retrieved_examples"] = retrieve_tasks(case.get("modules", ""))
     return [
-        {"role": "system", "content": build_system(**PROMPT_CONFIGS[tier])},
+        {"role": "system", "content": build_system(**config)},
         {"role": "user", "content": build_user(template_vars)},
     ]
 
