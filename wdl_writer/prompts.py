@@ -63,11 +63,14 @@ def build_retry(stderr: str) -> str:
     return _RETRY.replace("{{stderr}}", stderr)
 
 
-# Ablation tiers for benchmarking. Each value is kwargs for build_system().
+# Ablation tiers for benchmarking. Each value is kwargs for build_system(),
+# optionally with a `use_rag: True` flag indicating that the caller should
+# retrieve module tasks from the docstore and pass them as `retrieved_examples`.
 PROMPT_CONFIGS = {
     "raw": {"include_spec": False},
     "spec": {"include_spec": True, "include_example": False},
     "spec_plus_example": {"include_spec": True, "include_example": True},
     "spec_plus_wilds": {"include_spec": True, "include_wilds": True},
     "full": {"include_spec": True, "include_example": True, "include_wilds": True},
+    "full_plus_rag": {"include_spec": True, "include_example": True, "include_wilds": True, "use_rag": True},
 }
