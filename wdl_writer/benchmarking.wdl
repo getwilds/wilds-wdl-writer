@@ -7,8 +7,8 @@ workflow benchmark_wdl_generation {
     email: "wilds@fredhutch.org"
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
-      per_model_results: "One JSON file per model with full per-run results",
-      combined_summary: "Single JSON merging all models for cross-model comparison",
+      per_run_results: "One JSON file per (model, tier) pair with full per-run results",
+      combined_summary: "Single JSON merging all (model, tier) records for cross-model comparison",
       summary_md: "Human-readable markdown summary (model x tier grid and per-case breakdown)"
     }
   }
@@ -28,23 +28,25 @@ workflow benchmark_wdl_generation {
   }
 
   scatter (model in models) {
-    call run_benchmark {
-      input:
-        model = model,
-        bundle = bundle,
-        n_runs = n_runs,
-        tiers = tiers,
+    scatter (tier in tiers) {
+      call run_benchmark {
+        input:
+          model = model,
+          tier = tier,
+          bundle = bundle,
+          n_runs = n_runs,
+      }
     }
   }
 
   call merge_results {
     input:
-      per_model_json = run_benchmark.results_json,
+      per_run_json = flatten(run_benchmark.results_json),
       bundle = bundle,
   }
 
   output {
-    Array[File] per_model_results = run_benchmark.results_json
+    Array[File] per_run_results = flatten(run_benchmark.results_json)
     File combined_summary = merge_results.summary_json
     File summary_md = merge_results.summary_md
   }
@@ -52,30 +54,30 @@ workflow benchmark_wdl_generation {
 
 task run_benchmark {
   meta {
-    description: "Runs the full benchmark suite for one model against a local Ollama server"
+    description: "Runs the benchmark suite for one (model, tier) pair against a local Ollama server"
     author: "Fred Hutch WILDS Team"
     email: "wilds@fredhutch.org"
     url: "https://github.com/getwilds/wdl-writer"
     outputs: {
-      results_json: "Per-run pass/fail results for all tiers and test cases",
+      results_json: "Per-run pass/fail results for all test cases under this (model, tier)",
       server_log: "Ollama server stdout/stderr for debugging"
     }
   }
 
   parameter_meta {
     model: "Ollama model tag to pull and benchmark"
+    tier: "Prompt tier to evaluate (e.g., 'full', 'full_plus_rag')"
     bundle: "Tarball (tar.gz) of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json, summarize.py)"
-    n_runs: "Generations per tier per test case"
-    tiers: "Prompt tiers to evaluate"
+    n_runs: "Generations per test case"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
   }
 
   input {
     String model
+    String tier
     File bundle
     Int n_runs
-    Array[String] tiers
     Int cpu_cores = 4
     Int memory_gb = 32
   }
@@ -119,14 +121,14 @@ task run_benchmark {
     python3 -u benchmarking.py \
       --model "~{model}" \
       --n-runs ~{n_runs} \
-      --tiers ~{sep=" " tiers} \
+      --tiers "~{tier}" \
       --host "$OLLAMA_HOST" \
       --cases benchmarking_cases.json \
-      --output "results_~{safe_name}.json"
+      --output "results_~{safe_name}_~{tier}.json"
   >>>
 
   output {
-    File results_json = "results_~{safe_name}.json"
+    File results_json = "results_~{safe_name}_~{tier}.json"
     File server_log = "ollama_server.log"
   }
 
@@ -151,14 +153,14 @@ task merge_results {
   }
 
   parameter_meta {
-    per_model_json: "Array of per-model result JSON files from run_benchmark"
+    per_run_json: "Array of per-(model, tier) result JSON files from run_benchmark"
     bundle: "Tarball (tar.gz) of the wdl_writer package (provides summarize.py)"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
   }
 
   input {
-    Array[File] per_model_json
+    Array[File] per_run_json
     File bundle
     Int cpu_cores = 1
     Int memory_gb = 2
@@ -167,7 +169,7 @@ task merge_results {
   command <<<
     set -eo pipefail
     tar -xzf ~{bundle}
-    python3 summarize.py ~{sep=" " per_model_json}
+    python3 summarize.py ~{sep=" " per_run_json}
   >>>
 
   output {
