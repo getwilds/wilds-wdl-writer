@@ -7,7 +7,8 @@
     "analysis_goal": "Quality control report for raw sequencing reads",
     "input_data_type": "Paired FASTQ",
     "organism": "N/A",
-    "reference_genome": "N/A"
+    "reference_genome": "N/A",
+    "ground_truth_file": "fastqc.wdl"
   },
   {
     "id": "basic_sra_star",
@@ -17,7 +18,8 @@
     "analysis_goal": "Download SRA accessions and align reads with STAR two-pass",
     "input_data_type": "SRA accession IDs",
     "organism": "Homo sapiens",
-    "reference_genome": "GRCh38"
+    "reference_genome": "GRCh38",
+    "ground_truth_file": "ww-sra-star.wdl"
   },
   {
     "id": "intermediate_bwa_gatk",
@@ -27,7 +29,8 @@
     "analysis_goal": "Align paired-end DNA-seq reads with BWA, sort with samtools, call germline variants with GATK HaplotypeCaller",
     "input_data_type": "Paired FASTQ",
     "organism": "Homo sapiens",
-    "reference_genome": "GRCh38"
+    "reference_genome": "GRCh38",
+    "ground_truth_file": "ww-bwa-gatk.wdl"
   },
   {
     "id": "specialized_star_deseq2",
@@ -37,6 +40,7 @@
     "analysis_goal": "Align RNA-seq reads with STAR and run differential expression analysis with DESeq2",
     "input_data_type": "Paired FASTQ with sample condition labels",
     "organism": "Homo sapiens",
-    "reference_genome": "GRCh38"
+    "reference_genome": "GRCh38",
+    "ground_truth_file": "ww-star-deseq2.wdl"
   }
 ]
