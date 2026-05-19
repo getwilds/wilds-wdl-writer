@@ -155,7 +155,7 @@ def generate_with_retry(client: Client, model: str, case: dict, tier: str, max_r
     }
 
 
-def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int) -> list[dict]:
+def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: HuggingFaceEmbedding) -> list[dict]:
     """Run the eval across prompt tiers and test cases."""
     all_results = []
     for tier in tiers:
@@ -168,25 +168,56 @@ def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: l
             passes = 0
             first_passes = 0
             runs = []
+            lexical_scores = []
+            semantic_scores = []
+            retrieved_module_passes = []
+            ground_truth = load_ground_truth(case["ground_truth_file"])
             for i in range(n_runs):
                 result = generate_with_retry(client, model, case, tier, max_retries)
-                runs.append({"run": i, **result})
+                run_record = {"run": i, **result}
+                result_wdl = result["extracted_wdl"]
+                # Lexical evaluation
+                lex_score = lexical_similarity(ground_truth, result_wdl)
+                lexical_scores.append(lex_score)
+                run_record["lexical_score"] = lex_score
+                run_record["lexical_pass"] = lex_score >= LEXICAL_PASS_THRESHOLD
+                # Semantic evaluation
+                sem_score = semantic_similarity(embed_model, ground_truth, result_wdl)
+                semantic_scores.append(sem_score)
+                run_record["semantic_score"] = sem_score
+                run_record["semantic_pass"] = sem_score >= SEMANTIC_PASS_THRESHOLD
+                # Rule-based confirmation that retrieved modules are imported
+                imports_bool = check_retrieved_module_usage(case, result_wdl)
+                retrieved_module_passes.append(imports_bool)
+                # Append our dictionary
+                runs.append(run_record)
                 if result["valid"]:
                     passes += 1
                 if result["first_attempt_valid"]:
                     first_passes += 1
+                # Gather info to print
                 status = "PASS" if result["valid"] else "FAIL"
                 attempts = result["attempts_used"]
                 attempt_note = f" (attempt {attempts})" if attempts > 1 else ""
-                print(f"    run {i+1}: {status}{attempt_note}")
+                lex_note = f"  lex={run_record.get('lexical_score', float('nan')):.2f}"
+                sem_note = f"  sem={run_record.get('semantic_score', float('nan')):.2f}"
+                print(f"    run {i+1}: {status}{attempt_note}{lex_note}{sem_note}")
                 if not result["valid"]:
                     print(f"      {result['stderr'][:200]}")
-            tier_results.append({
+            case_record = {
                 "id": case["id"],
+                "ground_truth_wdl": ground_truth,
                 "pass_rate": passes / n_runs,
                 "first_attempt_pass_rate": first_passes / n_runs,
+                "module_coverage_pass_rate": sum(retrieved_module_passes) / n_runs,
                 "runs": runs,
-            })
+            }
+            # Calculate aggregate lexical and semantic scores
+            case_record["avg_lexical_score"] = sum(lexical_scores) / len(lexical_scores)
+            case_record["lexical_pass_rate"] = sum(s >= LEXICAL_PASS_THRESHOLD for s in lexical_scores) / n_runs
+            case_record["avg_semantic_score"] = sum(semantic_scores) / len(semantic_scores)
+            case_record["semantic_pass_rate"] = sum(s >= SEMANTIC_PASS_THRESHOLD for s in semantic_scores) / n_runs
+            tier_results.append(case_record)
             print(f"    -> {passes}/{n_runs} passed (first attempt: {first_passes}/{n_runs})")
         all_results.append({
             "model": model,
@@ -226,21 +257,30 @@ def main():
     print(f"Cases:       {args.cases} ({len(cases)} cases)")
     print(f"Output:      {args.output}")
 
+    print("Loading embedding model for semantic eval...")
+    embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
     client = Client(host=args.host)
-    results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries)
+    results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries, embed_model)
 
     with open(args.output, "w") as f:
         json.dump(results, f, indent=2)
 
     # Summary table
-    print(f"\n{'='*60}")
+    print(f"\n{'='*80}")
     print("SUMMARY")
-    print(f"{'='*60}")
-    print(f"{'Tier':<20} {'1st':>5}  {'Final':>5}   Per-case (final)")
-    print(f"{'-'*20} {'-'*5}  {'-'*5}   {'-'*40}")
+    print(f"{'='*80}")
+    print(f"{'Tier':<20} {'1st':>5}  {'Final':>5}  {'Mod':>5}  {'Lex':>5}  {'Sem':>5}   Per-case (final pass rate)")
+    print(f"{'-'*20} {'-'*5}  {'-'*5}  {'-'*5}  {'-'*5}  {'-'*5}   {'-'*40}")
     for tr in results:
         case_rates = "  ".join(f"{c['id']}:{c['pass_rate']:.0%}" for c in tr["cases"])
-        print(f"{tr['tier']:<20} {tr['avg_first_attempt_pass_rate']:>4.0%}  {tr['avg_pass_rate']:>4.0%}    {case_rates}")
+        avg_lex = sum(c.get("avg_lexical_score", 0) for c in tr["cases"] if "avg_lexical_score" in c)
+        avg_sem = sum(c.get("avg_semantic_score", 0) for c in tr["cases"] if "avg_semantic_score" in c)
+        n_scored = sum(1 for c in tr["cases"] if "avg_lexical_score" in c)
+        lex_str = f"{avg_lex/n_scored:.2f}" if n_scored else "  n/a"
+        sem_str = f"{avg_sem/n_scored:.2f}" if n_scored else "  n/a"
+        avg_mod = sum(c["module_coverage_pass_rate"] for c in tr["cases"]) / len(tr["cases"])
+        print(f"{tr['tier']:<20} {tr['avg_first_attempt_pass_rate']:>4.0%}  {tr['avg_pass_rate']:>4.0%}  {avg_mod:>4.0%}  {lex_str:>5}  {sem_str:>5}   {case_rates}")
 
 
 if __name__ == "__main__":
