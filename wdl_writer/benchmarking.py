@@ -25,16 +25,51 @@ import os
 import re
 import json
 from pathlib import Path
+import numpy as np
 from ollama import Client
+from rapidfuzz.distance import Levenshtein
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
 from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
 from retrieval import retrieve_tasks
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
+GROUND_TRUTH_DIR = Path(__file__).parent.parent / "evals" / "data"
+
+LEXICAL_PASS_THRESHOLD = 0.85
+SEMANTIC_PASS_THRESHOLD = 0.90
 
 # ---------------------------------------------------------------------------
 # Core functions
 # ---------------------------------------------------------------------------
+
+
+def load_ground_truth(filename: str) -> str:
+    """Return a reference WDL as a string."""
+    full_wdl = Path(GROUND_TRUTH_DIR, filename).read_text()
+    return full_wdl
+
+
+def lexical_similarity(ref: str, to_eval: str) -> float:
+    """Measure text similarity"""
+    return 1 - Levenshtein.normalized_distance(ref, to_eval)
+
+
+def semantic_similarity(embed_model: HuggingFaceEmbedding, ref: str, to_eval: str) -> float:
+    """Measure 'meaning' similarity by comparing text embeddings."""
+    emb_ref = np.array(embed_model.get_text_embedding(ref))
+    emb_eval = np.array(embed_model.get_text_embedding(to_eval))
+    # Calculate cosine similarity with numpy
+    dot_product = np.dot(emb_ref, emb_eval)
+    product_of_lengths = np.linalg.norm(emb_ref) * np.linalg.norm(emb_eval)
+    return float(dot_product / product_of_lengths)
+
+
+def check_retrieved_module_usage(case: dict, to_eval: str) -> bool:
+    """Confirm that retrieved modules appear in the output WDL imports."""
+    expected = {m.strip() for m in case["modules"].split(",")}
+    found = set(re.findall(r'ww-[\w-]+(?=/ww-[\w-]+\.wdl)', to_eval))
+    return expected == found
 
 
 def extract_wdl(text: str) -> str:
