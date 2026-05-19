@@ -106,7 +106,7 @@ def chat_call(client: Client, model: str, messages: list[dict]) -> str:
 
 def initial_messages(case: dict, tier: str) -> list[dict]:
     """Build the [system, user] message list for the first attempt."""
-    template_vars = {k: v for k, v in case.items() if k != "id"}
+    template_vars = {k: v for k, v in case.items() if k not in ("id", "ground_truth_file")}
     # Split RAG flag out of the config since build_system() doesn't know about it.
     config = {**PROMPT_CONFIGS[tier]}
     use_rag = config.pop("use_rag", False)
