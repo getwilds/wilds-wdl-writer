@@ -23,3 +23,7 @@ default_slurm_partition.name = "campus-new"
 
 # Define GPU slurm partition as necessary ("campus-new", "short", or "chorus" for FH users)
 gpu_slurm_partition.name = "chorus"
+
+# Extra arguments passed to `sbatch` for every task submission.
+# Default Slurm partition time limits can cut off long-running shards.
+extra_sbatch_args = ["--time=12:00:00"]

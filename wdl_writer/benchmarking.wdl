@@ -100,7 +100,7 @@ task run_benchmark {
 
     ollama serve > ollama_server.log 2>&1 &
     SERVER_PID=$!
-    trap 'kill $SERVER_PID 2>/dev/null; wait $SERVER_PID 2>/dev/null' EXIT
+    trap 'kill -9 $SERVER_PID 2>/dev/null || true' EXIT
 
     for i in $(seq 1 60); do
       if curl -sf "$OLLAMA_HOST/api/tags" > /dev/null; then
