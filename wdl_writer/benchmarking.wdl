@@ -94,7 +94,11 @@ task run_benchmark {
     # and drop the `bundle` input (see build_bundle.sh).
     tar -xzf ~{bundle}
 
-    export OLLAMA_HOST="http://127.0.0.1:11434"
+    # Pick a per-shard port so co-located shards don't collide on 11434.
+    # Apptainer doesn't isolate the host network namespace, so multiple shards
+    # on the same node share localhost.
+    OLLAMA_PORT=$(( 20000 + ($$ + RANDOM) % 40000 ))
+    export OLLAMA_HOST="http://127.0.0.1:${OLLAMA_PORT}"
     # OLLAMA_MODELS is set by the sprocket config via --env, pointing at a
     # persistent host bind mount so models pulled across runs are cached.
 
