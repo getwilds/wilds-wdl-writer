@@ -1,0 +1,29 @@
+[run]
+# The Slurm + Apptainer backend requires explicitly opting into experimental features.
+experimental_features_enabled = true
+
+[run.backends.default]
+# Set the default backend to Slurm + Apptainer.
+type = "slurm_apptainer"
+
+# Enable `module load`
+extra_apptainer_exec_args = [
+    "--nv",
+    "--bind", "/app/lmod:/app/lmod",
+    "--bind", "/app/modules/all:/app/modules/all",
+    "--bind", "/app/software:/app/software",
+    "--bind", "/home/tfirman/.ollama/models:/ollama_models",
+    "--env", "MODULEPATH=/app/modules/all",
+    "--env", "LMOD_CMD=/app/lmod/lmod/libexec/lmod",
+    "--env", "OLLAMA_MODELS=/ollama_models",
+]
+
+# Define CPU slurm partition as necessary ("campus-new" or "short" for FH users)
+default_slurm_partition.name = "campus-new"
+
+# Define GPU slurm partition as necessary ("campus-new", "short", or "chorus" for FH users)
+gpu_slurm_partition.name = "chorus"
+
+# Extra arguments passed to `sbatch` for every task submission.
+# Default Slurm partition time limits can cut off long-running shards.
+extra_sbatch_args = ["--time=12:00:00"]

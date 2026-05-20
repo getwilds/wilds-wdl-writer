@@ -17,10 +17,13 @@
 # Prerequisites (one-time setup on login node):
 #   apptainer pull ollama.sif docker://ollama/ollama
 #   pip install ollama  (or into a venv/conda env)
+#   ./build_bundle.sh && cp bundle.tar.gz $HOME/   # build and stage the bundle
+#   (the bundle step goes away once the repo is public — see build_bundle.sh)
 #
 # Usage:
 #   sbatch benchmarking.sbatch                         # defaults
 #   sbatch --export=MODEL=gemma3:12b benchmarking.sbatch  # override model
+#   sbatch --export=BUNDLE=$HOME/bundle.tar.gz benchmarking.sbatch  # override bundle path
 # ---------------------------------------------------------------------------
 
 # Loading necessary modules
@@ -42,15 +45,20 @@ fi
 # Configurable via --export or edit here
 MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
-TIERS="${TIERS:-raw spec spec_plus_example}"
-SIF="${SIF:-ollama.sif}"
+TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
+SIF="${SIF:-ollama_0.21.0.sif}"
+BUNDLE="${BUNDLE:-$HOME/bundle.tar.gz}"
 
 # Store models on scratch to avoid filling home directory
 export OLLAMA_MODELS="$HOME/ollama_models"
 mkdir -p "$OLLAMA_MODELS"
 
 OLLAMA_HOST="http://localhost:11434"
-SCRIPT_DIR="$HOME"
+
+# Unpack the bundle into a per-job working dir so concurrent jobs don't collide
+RUN_DIR="$TMPDIR/wdl_writer_run_${SLURM_JOB_ID:-$$}"
+mkdir -p "$RUN_DIR"
+tar -xzf "$BUNDLE" -C "$RUN_DIR"
 
 echo "============================================"
 echo "WDL Generation Benchmark"
@@ -59,16 +67,18 @@ echo "Model:    $MODEL"
 echo "N_RUNS:   $N_RUNS"
 echo "Tiers:    $TIERS"
 echo "SIF:      $SIF"
+echo "Bundle:   $BUNDLE"
+echo "Run dir:  $RUN_DIR"
 echo "Node:     $(hostname)"
 echo "GPU:      $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
 echo "============================================"
 
 # --- Start Ollama server in the background ---
 echo "Starting Ollama server..."
-apptainer run --nv \
+apptainer exec --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
     --bind "$TMPDIR:$TMPDIR" \
-    "$SIF" serve &
+    "$SIF" ollama serve &
 OLLAMA_PID=$!
 
 # Wait for server to be ready
@@ -95,12 +105,14 @@ apptainer exec --nv \
 
 # --- Run the benchmark ---
 echo "Running benchmark..."
-python -u "$SCRIPT_DIR/benchmarking.py" \
+cd "$RUN_DIR"
+python -u benchmarking.py \
     --model "$MODEL" \
     --n-runs "$N_RUNS" \
     --tiers $TIERS \
     --host "$OLLAMA_HOST" \
-    --output "$SCRIPT_DIR/results_${MODEL//[:\/]/_}_${SLURM_JOB_ID}.json"
+    --cases benchmarking_cases.json \
+    --output "$HOME/results_${MODEL//[:\/]/_}_${SLURM_JOB_ID}.json"
 
 # --- Cleanup ---
 echo "Shutting down Ollama server..."
