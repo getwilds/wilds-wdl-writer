@@ -34,7 +34,16 @@ from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
 from retrieval import retrieve_tasks
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
-GROUND_TRUTH_DIR = Path(__file__).parent.parent / "evals" / "data"
+# In the source repo, ground truths live at evals/data/. In the WDL/sbatch
+# bundle they're unpacked next to benchmarking.py as ground_truth/. Allow an
+# env override so the WDL task can point at the bundled copy without editing
+# this file.
+GROUND_TRUTH_DIR = Path(
+    os.environ.get("WDL_WRITER_GROUND_TRUTH_DIR")
+    or (Path(__file__).parent / "ground_truth"
+        if (Path(__file__).parent / "ground_truth").exists()
+        else Path(__file__).parent.parent / "evals" / "data")
+)
 
 LEXICAL_PASS_THRESHOLD = 0.85
 SEMANTIC_PASS_THRESHOLD = 0.90

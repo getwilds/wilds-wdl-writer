@@ -88,11 +88,13 @@ task run_benchmark {
     set -eo pipefail
 
     # Unpack the bundle in place. The tarball must contain benchmarking.py,
-    # prompts.py, prompts/, and benchmarking_cases.json at the top level
-    # so `from prompts import ...` resolves correctly.
+    # prompts.py, prompts/, benchmarking_cases.json, and ground_truth/ at the
+    # top level so `from prompts import ...` resolves correctly and lexical/
+    # semantic eval can load reference WDLs.
     # TODO: Once wilds-wdl-writer is public, replace this with a git clone
     # and drop the `bundle` input (see build_bundle.sh).
     tar -xzf ~{bundle}
+    export WDL_WRITER_GROUND_TRUTH_DIR="$PWD/ground_truth"
 
     # Pick a per-shard port so co-located shards don't collide on 11434.
     # Apptainer doesn't isolate the host network namespace, so multiple shards
