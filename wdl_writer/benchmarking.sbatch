@@ -38,6 +38,20 @@ TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
 SIF="${SIF:-ollama_0.21.0.sif}"
 BUNDLE="${BUNDLE:-$HOME/bundle.tar.gz}"
 
+# Resolve SIF and BUNDLE to absolute paths so later `cd "$RUN_DIR"` doesn't
+# break the apptainer / tar invocations (callers may pass bare filenames
+# relative to the submit dir).
+SIF="$(readlink -f "$SIF")"
+BUNDLE="$(readlink -f "$BUNDLE")"
+if [ ! -f "$SIF" ]; then
+    echo "ERROR: SIF image not found: $SIF" >&2
+    exit 1
+fi
+if [ ! -f "$BUNDLE" ]; then
+    echo "ERROR: bundle not found: $BUNDLE" >&2
+    exit 1
+fi
+
 # Store models on scratch to avoid filling home directory
 export OLLAMA_MODELS="$HOME/ollama_models"
 mkdir -p "$OLLAMA_MODELS"
