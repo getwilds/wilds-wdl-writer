@@ -189,6 +189,7 @@ def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: l
                 # Rule-based confirmation that retrieved modules are imported
                 imports_bool = check_retrieved_module_usage(case, result_wdl)
                 retrieved_module_passes.append(imports_bool)
+                run_record["retrieved_module_pass"] = imports_bool
                 # Append our dictionary
                 runs.append(run_record)
                 if result["valid"]:
