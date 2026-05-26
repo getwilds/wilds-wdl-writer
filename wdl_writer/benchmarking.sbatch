@@ -109,11 +109,18 @@ apptainer exec --nv \
 # --- Run the benchmark ---
 echo "Running benchmark..."
 cd "$RUN_DIR"
+# HF_HOME → node-local scratch so the sentence-transformers download doesn't
+# land in $HOME (which is small) and so concurrent shards don't fight over
+# the same cache directory.
+HF_CACHE="$TMPDIR/hf_cache_${SLURM_JOB_ID:-$$}"
+mkdir -p "$HF_CACHE"
+
 apptainer exec --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
     --bind "$TMPDIR:$TMPDIR" \
     --bind "$HOME:$HOME" \
     --env "WDL_WRITER_GROUND_TRUTH_DIR=$RUN_DIR/ground_truth" \
+    --env "HF_HOME=$HF_CACHE" \
     "$SIF" python3 -u benchmarking.py \
     --model "$MODEL" \
     --n-runs "$N_RUNS" \

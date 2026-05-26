@@ -95,6 +95,10 @@ task run_benchmark {
     # and drop the `bundle` input (see build_bundle.sh).
     tar -xzf ~{bundle}
     export WDL_WRITER_GROUND_TRUTH_DIR="$PWD/ground_truth"
+    # Park the HF cache in the task work dir; $HOME on the host is often small
+    # and the per-task work dir has whatever the sprocket config provisions.
+    export HF_HOME="$PWD/hf_cache"
+    mkdir -p "$HF_HOME"
 
     # Pick a per-shard port so co-located shards don't collide on 11434.
     # Apptainer doesn't isolate the host network namespace, so multiple shards
