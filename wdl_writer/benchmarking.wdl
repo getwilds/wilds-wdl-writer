@@ -96,9 +96,10 @@ task run_benchmark {
     tar -xzf ~{bundle}
     export WDL_WRITER_GROUND_TRUTH_DIR="$PWD/ground_truth"
     # The sentence-transformers model is pre-baked into the image at
-    # /root/.cache/huggingface; force offline mode so we don't try to phone home
-    # (no per-shard download, no shared scratch filling up across shards).
-    export HF_HOME="/root/.cache/huggingface"
+    # /opt/hf_cache (world-readable so Apptainer's non-root UID can read it);
+    # force offline mode so we don't try to phone home (no per-shard download,
+    # no shared scratch filling up across shards).
+    export HF_HOME="/opt/hf_cache"
     export HF_HUB_OFFLINE=1
     export TRANSFORMERS_OFFLINE=1
 

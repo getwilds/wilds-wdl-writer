@@ -114,7 +114,7 @@ apptainer exec --nv \
     --bind "$TMPDIR:$TMPDIR" \
     --bind "$HOME:$HOME" \
     --env "WDL_WRITER_GROUND_TRUTH_DIR=$RUN_DIR/ground_truth" \
-    --env "HF_HOME=/root/.cache/huggingface" \
+    --env "HF_HOME=/opt/hf_cache" \
     --env "HF_HUB_OFFLINE=1" \
     --env "TRANSFORMERS_OFFLINE=1" \
     "$SIF" python3 -u benchmarking.py \
