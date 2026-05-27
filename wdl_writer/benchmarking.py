@@ -28,7 +28,7 @@ from pathlib import Path
 import numpy as np
 from ollama import Client
 from rapidfuzz.distance import Levenshtein
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from sentence_transformers import SentenceTransformer
 
 from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
 from retrieval import retrieve_tasks
@@ -64,10 +64,10 @@ def lexical_similarity(ref: str, to_eval: str) -> float:
     return 1 - Levenshtein.normalized_distance(ref, to_eval)
 
 
-def semantic_similarity(embed_model: HuggingFaceEmbedding, ref: str, to_eval: str) -> float:
+def semantic_similarity(embed_model: SentenceTransformer, ref: str, to_eval: str) -> float:
     """Measure 'meaning' similarity by comparing text embeddings."""
-    emb_ref = np.array(embed_model.get_text_embedding(ref))
-    emb_eval = np.array(embed_model.get_text_embedding(to_eval))
+    emb_ref = embed_model.encode(ref)
+    emb_eval = embed_model.encode(to_eval)
     # Calculate cosine similarity with numpy
     dot_product = np.dot(emb_ref, emb_eval)
     product_of_lengths = np.linalg.norm(emb_ref) * np.linalg.norm(emb_eval)
@@ -164,7 +164,7 @@ def generate_with_retry(client: Client, model: str, case: dict, tier: str, max_r
     }
 
 
-def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: HuggingFaceEmbedding) -> list[dict]:
+def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: SentenceTransformer) -> list[dict]:
     """Run the eval across prompt tiers and test cases."""
     all_results = []
     for tier in tiers:
@@ -268,11 +268,7 @@ def main():
     print(f"Output:      {args.output}")
 
     print("Loading embedding model for semantic eval...")
-    # cache_folder= because llama-index's inner cache ignores HF_HOME.
-    embed_model = HuggingFaceEmbedding(
-        model_name="sentence-transformers/all-MiniLM-L6-v2",
-        cache_folder=os.environ.get("HF_HOME") or None,
-    )
+    embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
     client = Client(host=args.host)
     results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries, embed_model)
