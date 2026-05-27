@@ -268,7 +268,11 @@ def main():
     print(f"Output:      {args.output}")
 
     print("Loading embedding model for semantic eval...")
-    embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    # cache_folder= because llama-index's inner cache ignores HF_HOME.
+    embed_model = HuggingFaceEmbedding(
+        model_name="sentence-transformers/all-MiniLM-L6-v2",
+        cache_folder=os.environ.get("HF_HOME") or None,
+    )
 
     client = Client(host=args.host)
     results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries, embed_model)
