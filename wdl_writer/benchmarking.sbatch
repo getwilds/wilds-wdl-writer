@@ -15,8 +15,7 @@
 # latency for inference).
 #
 # Prerequisites (one-time setup on login node):
-#   apptainer pull ollama.sif docker://ollama/ollama
-#   pip install ollama  (or into a venv/conda env)
+#   apptainer pull ollama_0.21.0.sif docker://getwilds/ollama:0.21.0
 #   ./build_bundle.sh && cp bundle.tar.gz $HOME/   # build and stage the bundle
 #   (the bundle step goes away once the repo is public — see build_bundle.sh)
 #
@@ -26,21 +25,11 @@
 #   sbatch --export=BUNDLE=$HOME/bundle.tar.gz benchmarking.sbatch  # override bundle path
 # ---------------------------------------------------------------------------
 
-# Loading necessary modules
-module load Apptainer/1.1.6 Python/3.12.3-GCCcore-13.3.0 sprocket/0.23.0
-
-# If a virtual environment exists, activate it
-# If not, create one and install the ollama Python client
-VENV_DIR="$HOME/venvs/ollama"
-if [ -d "$VENV_DIR" ]; then
-    echo "Activating existing virtual environment at $VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-else
-    echo "Creating virtual environment at $VENV_DIR"
-    python -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-    pip install --no-cache-dir ollama
-fi
+# Loading necessary modules. We run benchmarking.py inside the Apptainer
+# container too (see below), so no host-side Python, venv, or sprocket
+# module is required — the image carries all of those plus the functional-eval
+# Python deps (rapidfuzz, llama-index embeddings, sentence-transformers, torch).
+module load Apptainer/1.1.6
 
 # Configurable via --export or edit here
 MODEL="${MODEL:-llama3.1:8b}"
@@ -48,6 +37,20 @@ N_RUNS="${N_RUNS:-5}"
 TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
 SIF="${SIF:-ollama_0.21.0.sif}"
 BUNDLE="${BUNDLE:-$HOME/bundle.tar.gz}"
+
+# Resolve SIF and BUNDLE to absolute paths so later `cd "$RUN_DIR"` doesn't
+# break the apptainer / tar invocations (callers may pass bare filenames
+# relative to the submit dir).
+SIF="$(readlink -f "$SIF")"
+BUNDLE="$(readlink -f "$BUNDLE")"
+if [ ! -f "$SIF" ]; then
+    echo "ERROR: SIF image not found: $SIF" >&2
+    exit 1
+fi
+if [ ! -f "$BUNDLE" ]; then
+    echo "ERROR: bundle not found: $BUNDLE" >&2
+    exit 1
+fi
 
 # Store models on scratch to avoid filling home directory
 export OLLAMA_MODELS="$HOME/ollama_models"
@@ -106,7 +109,15 @@ apptainer exec --nv \
 # --- Run the benchmark ---
 echo "Running benchmark..."
 cd "$RUN_DIR"
-python -u benchmarking.py \
+apptainer exec --nv \
+    --bind "$OLLAMA_MODELS:/root/.ollama/models" \
+    --bind "$TMPDIR:$TMPDIR" \
+    --bind "$HOME:$HOME" \
+    --env "WDL_WRITER_GROUND_TRUTH_DIR=$RUN_DIR/ground_truth" \
+    --env "HF_HOME=/opt/hf_cache" \
+    --env "HF_HUB_OFFLINE=1" \
+    --env "TRANSFORMERS_OFFLINE=1" \
+    "$SIF" python3 -u benchmarking.py \
     --model "$MODEL" \
     --n-runs "$N_RUNS" \
     --tiers $TIERS \

@@ -41,7 +41,26 @@ def format_case_pair(case: dict) -> str:
     return format_pct(final) if first == final else f"{format_pct(first)} → {format_pct(final)}"
 
 
+def tier_metric_avg(rec: dict, field: str) -> float | None:
+    """Mean of a per-case field across the tier record, or None if absent."""
+    vals = [c[field] for c in rec["cases"] if field in c]
+    return sum(vals) / len(vals) if vals else None
+
+
+def format_score(val: float | None) -> str:
+    """Render a 0-1 similarity score as a 2-decimal float, or em-dash if missing."""
+    return f"{val:.2f}" if val is not None else "—"
+
+
 TIER_ORDER = ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full"]
+
+# Extra per-(model, tier) metrics added by the functional eval (PR #15).
+# Each tuple is (case_field, heading, formatter, percent-style).
+EXTRA_METRICS = [
+    ("avg_lexical_score", "Lexical similarity (avg)", format_score, False),
+    ("avg_semantic_score", "Semantic similarity (avg)", format_score, False),
+    ("module_coverage_pass_rate", "Module-coverage pass rate", format_pct, True),
+]
 
 
 def render_markdown(records: list[dict]) -> str:
@@ -74,6 +93,26 @@ def render_markdown(records: list[dict]) -> str:
             row.append(format_pair(by_key.get((model, tier))))
         out.append("| " + " | ".join(row) + " |")
     out.append("")
+
+    # Extra functional-eval metrics — render one model x tier grid per metric,
+    # but only if at least one record actually has the field (older results
+    # JSONs predate PR #15 and won't carry these).
+    for field, heading, formatter, _ in EXTRA_METRICS:
+        present = any(field in c for r in records for c in r["cases"])
+        if not present:
+            continue
+        out.append(f"## {heading} by model and tier")
+        out.append("")
+        out.append("| " + " | ".join(header) + " |")
+        out.append("|" + "|".join(["---"] * len(header)) + "|")
+        for model in models:
+            row = [model]
+            for tier in tiers:
+                rec = by_key.get((model, tier))
+                val = tier_metric_avg(rec, field) if rec else None
+                row.append(formatter(val) if val is not None else "—")
+            out.append("| " + " | ".join(row) + " |")
+        out.append("")
 
     # Best (model, tier)
     best = max(records, key=lambda r: r["avg_pass_rate"])

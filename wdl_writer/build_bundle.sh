@@ -28,11 +28,21 @@ tar --exclude='*/__pycache__' --exclude='*.pyc' -czf "$OUT" \
   summarize.py \
   retrieval.py
 
-# Append the chroma db from ../data/chroma/ so it lands at the bundle root as chroma/.
-# Use -A (append to archive) with the gzip workflow: tar can't append to .tar.gz directly,
-# so we gunzip, append, then re-gzip.
+# Append extras to the archive. tar can't append to .tar.gz directly, so we
+# gunzip, append, then re-gzip.
+#   chroma/         — vector DB used by retrieval.py (from ../data/chroma/)
+#   ground_truth/   — reference WDLs for lexical/semantic eval (from ../evals/data/)
+#
+# We stage ground_truth/ via a temp dir rather than tar --transform so the
+# script works on BSD tar (macOS) too, not just GNU tar.
 gunzip "$OUT"
 tar --exclude='*/__pycache__' -rf "${OUT%.gz}" -C ../data chroma
+
+STAGE="$(mktemp -d)"
+trap 'rm -rf "$STAGE"' EXIT
+cp -R ../evals/data "$STAGE/ground_truth"
+tar --exclude='*/__pycache__' -rf "${OUT%.gz}" -C "$STAGE" ground_truth
+
 gzip "${OUT%.gz}"
 
 echo "Built $SCRIPT_DIR/$OUT"

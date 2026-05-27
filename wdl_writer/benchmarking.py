@@ -28,13 +28,22 @@ from pathlib import Path
 import numpy as np
 from ollama import Client
 from rapidfuzz.distance import Levenshtein
-from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from sentence_transformers import SentenceTransformer
 
 from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
 from retrieval import retrieve_tasks
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
-GROUND_TRUTH_DIR = Path(__file__).parent.parent / "evals" / "data"
+# In the source repo, ground truths live at evals/data/. In the WDL/sbatch
+# bundle they're unpacked next to benchmarking.py as ground_truth/. Allow an
+# env override so the WDL task can point at the bundled copy without editing
+# this file.
+GROUND_TRUTH_DIR = Path(
+    os.environ.get("WDL_WRITER_GROUND_TRUTH_DIR")
+    or (Path(__file__).parent / "ground_truth"
+        if (Path(__file__).parent / "ground_truth").exists()
+        else Path(__file__).parent.parent / "evals" / "data")
+)
 
 LEXICAL_PASS_THRESHOLD = 0.85
 SEMANTIC_PASS_THRESHOLD = 0.90
@@ -55,10 +64,10 @@ def lexical_similarity(ref: str, to_eval: str) -> float:
     return 1 - Levenshtein.normalized_distance(ref, to_eval)
 
 
-def semantic_similarity(embed_model: HuggingFaceEmbedding, ref: str, to_eval: str) -> float:
+def semantic_similarity(embed_model: SentenceTransformer, ref: str, to_eval: str) -> float:
     """Measure 'meaning' similarity by comparing text embeddings."""
-    emb_ref = np.array(embed_model.get_text_embedding(ref))
-    emb_eval = np.array(embed_model.get_text_embedding(to_eval))
+    emb_ref = embed_model.encode(ref)
+    emb_eval = embed_model.encode(to_eval)
     # Calculate cosine similarity with numpy
     dot_product = np.dot(emb_ref, emb_eval)
     product_of_lengths = np.linalg.norm(emb_ref) * np.linalg.norm(emb_eval)
@@ -155,7 +164,7 @@ def generate_with_retry(client: Client, model: str, case: dict, tier: str, max_r
     }
 
 
-def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: HuggingFaceEmbedding) -> list[dict]:
+def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: SentenceTransformer) -> list[dict]:
     """Run the eval across prompt tiers and test cases."""
     all_results = []
     for tier in tiers:
@@ -259,7 +268,7 @@ def main():
     print(f"Output:      {args.output}")
 
     print("Loading embedding model for semantic eval...")
-    embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    embed_model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
 
     client = Client(host=args.host)
     results = run_eval(client, args.model, args.n_runs, args.tiers, cases, args.max_retries, embed_model)

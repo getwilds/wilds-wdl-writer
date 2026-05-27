@@ -1,14 +1,12 @@
 {
   "benchmark_wdl_generation.models": [
     "gemma4:31b",
-    "gemma4:26b",
     "granite-code:34b",
     "granite-code:20b",
     "granite-code:8b",
     "gpt-oss:20b",
     "starcoder2:15b",
-    "phi4:14b",
-    "mixtral:8x7b"
+    "phi4:14b"
   ],
   "benchmark_wdl_generation.bundle": "/home/tfirman/bundle.tar.gz",
   "benchmark_wdl_generation.n_runs": 10,
