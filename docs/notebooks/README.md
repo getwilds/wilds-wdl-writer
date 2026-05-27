@@ -9,4 +9,3 @@ They are preserved here as a record of our reasoning: why we approached certain 
 - **01_ingestion.ipynb**: RAG ingestion pipeline
 - **02_benchmarking.ipynb**: Baseline LLM benchmarking
 - **03_functional_eval.ipynb**: Functional evaluation of LLM outputs (lexical/semantic/rule-based checks)
-- **04_user_interface.ipynb**: Command-line user interface
