@@ -16,13 +16,11 @@
 #
 # Prerequisites (one-time setup on login node):
 #   apptainer pull ollama_0.21.0.sif docker://getwilds/ollama:0.21.0
-#   ./build_bundle.sh && cp bundle.tar.gz $HOME/   # build and stage the bundle
-#   (the bundle step goes away once the repo is public — see build_bundle.sh)
 #
 # Usage:
 #   sbatch benchmarking.sbatch                         # defaults
 #   sbatch --export=MODEL=gemma3:12b benchmarking.sbatch  # override model
-#   sbatch --export=BUNDLE=$HOME/bundle.tar.gz benchmarking.sbatch  # override bundle path
+#   sbatch --export=GIT_REF=<sha> benchmarking.sbatch     # pin to a commit
 # ---------------------------------------------------------------------------
 
 # Loading necessary modules. We run benchmarking.py inside the Apptainer
@@ -36,19 +34,14 @@ MODEL="${MODEL:-llama3.1:8b}"
 N_RUNS="${N_RUNS:-5}"
 TIERS="${TIERS:-raw spec spec_plus_example spec_plus_wilds full}"
 SIF="${SIF:-ollama_0.21.0.sif}"
-BUNDLE="${BUNDLE:-$HOME/bundle.tar.gz}"
+GIT_REF="${GIT_REF:-main}"
 
-# Resolve SIF and BUNDLE to absolute paths so later `cd "$RUN_DIR"` doesn't
-# break the apptainer / tar invocations (callers may pass bare filenames
-# relative to the submit dir).
+# Resolve SIF to an absolute path so later `cd "$RUN_DIR"` doesn't break
+# the apptainer invocations (callers may pass a bare filename relative to
+# the submit dir).
 SIF="$(readlink -f "$SIF")"
-BUNDLE="$(readlink -f "$BUNDLE")"
 if [ ! -f "$SIF" ]; then
     echo "ERROR: SIF image not found: $SIF" >&2
-    exit 1
-fi
-if [ ! -f "$BUNDLE" ]; then
-    echo "ERROR: bundle not found: $BUNDLE" >&2
     exit 1
 fi
 
@@ -58,10 +51,12 @@ mkdir -p "$OLLAMA_MODELS"
 
 OLLAMA_HOST="http://localhost:11434"
 
-# Unpack the bundle into a per-job working dir so concurrent jobs don't collide
+# Clone the repo into a per-job working dir so concurrent jobs don't collide
 RUN_DIR="$TMPDIR/wdl_writer_run_${SLURM_JOB_ID:-$$}"
 mkdir -p "$RUN_DIR"
-tar -xzf "$BUNDLE" -C "$RUN_DIR"
+git clone https://github.com/getwilds/wilds-wdl-writer "$RUN_DIR/wilds-wdl-writer"
+git -C "$RUN_DIR/wilds-wdl-writer" checkout "$GIT_REF"
+WORK_DIR="$RUN_DIR/wilds-wdl-writer/wdl_writer"
 
 echo "============================================"
 echo "WDL Generation Benchmark"
@@ -70,8 +65,8 @@ echo "Model:    $MODEL"
 echo "N_RUNS:   $N_RUNS"
 echo "Tiers:    $TIERS"
 echo "SIF:      $SIF"
-echo "Bundle:   $BUNDLE"
-echo "Run dir:  $RUN_DIR"
+echo "Git ref:  $GIT_REF"
+echo "Work dir: $WORK_DIR"
 echo "Node:     $(hostname)"
 echo "GPU:      $(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null || echo 'N/A')"
 echo "============================================"
@@ -108,12 +103,11 @@ apptainer exec --nv \
 
 # --- Run the benchmark ---
 echo "Running benchmark..."
-cd "$RUN_DIR"
+cd "$WORK_DIR"
 apptainer exec --nv \
     --bind "$OLLAMA_MODELS:/root/.ollama/models" \
     --bind "$TMPDIR:$TMPDIR" \
     --bind "$HOME:$HOME" \
-    --env "WDL_WRITER_GROUND_TRUTH_DIR=$RUN_DIR/ground_truth" \
     --env "HF_HOME=/opt/hf_cache" \
     --env "HF_HUB_OFFLINE=1" \
     --env "TRANSFORMERS_OFFLINE=1" \
