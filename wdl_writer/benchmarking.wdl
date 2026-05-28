@@ -15,14 +15,14 @@ workflow benchmark_wdl_generation {
 
   parameter_meta {
     models: "List of Ollama model tags to benchmark (e.g., ['llama3.1:8b', 'gemma3:12b'])"
-    bundle: "Tarball (tar.gz) of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json, summarize.py)"
+    git_ref: "wilds-wdl-writer git ref to clone (commit SHA, tag, or branch). Pin to a commit for reproducibility."
     n_runs: "Number of generations per test case per tier"
     tiers: "Prompt tiers to evaluate (raw, spec, spec_plus_example, spec_plus_wilds, full)"
   }
 
   input {
     Array[String] models
-    File bundle
+    String git_ref = "main"
     Int n_runs = 5
     Array[String] tiers = ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full"]
   }
@@ -33,7 +33,7 @@ workflow benchmark_wdl_generation {
         input:
           model = model,
           tier = tier,
-          bundle = bundle,
+          git_ref = git_ref,
           n_runs = n_runs,
       }
     }
@@ -42,7 +42,7 @@ workflow benchmark_wdl_generation {
   call merge_results {
     input:
       per_run_json = flatten(run_benchmark.results_json),
-      bundle = bundle,
+      git_ref = git_ref,
   }
 
   output {
@@ -67,7 +67,7 @@ task run_benchmark {
   parameter_meta {
     model: "Ollama model tag to pull and benchmark"
     tier: "Prompt tier to evaluate (e.g., 'full', 'full_plus_rag')"
-    bundle: "Tarball (tar.gz) of the wdl_writer package (benchmarking.py, prompts.py, prompts/, benchmarking_cases.json, summarize.py)"
+    git_ref: "wilds-wdl-writer git ref to clone (commit SHA, tag, or branch)"
     n_runs: "Generations per test case"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
@@ -76,7 +76,7 @@ task run_benchmark {
   input {
     String model
     String tier
-    File bundle
+    String git_ref
     Int n_runs
     Int cpu_cores = 4
     Int memory_gb = 32
@@ -87,14 +87,15 @@ task run_benchmark {
   command <<<
     set -eo pipefail
 
-    # Unpack the bundle in place. The tarball must contain benchmarking.py,
-    # prompts.py, prompts/, benchmarking_cases.json, and ground_truth/ at the
-    # top level so `from prompts import ...` resolves correctly and lexical/
-    # semantic eval can load reference WDLs.
-    # TODO: Once wilds-wdl-writer is public, replace this with a git clone
-    # and drop the `bundle` input (see build_bundle.sh).
-    tar -xzf ~{bundle}
-    export WDL_WRITER_GROUND_TRUTH_DIR="$PWD/ground_truth"
+    # Clone the repo so benchmarking.py, prompts/, data/chroma/, and
+    # evals/data/ (ground truths) are all available at their natural
+    # paths. retrieval.py and benchmarking.py both fall back to the
+    # in-repo locations, so no env overrides are needed.
+    git clone https://github.com/getwilds/wilds-wdl-writer
+    cd wilds-wdl-writer
+    git checkout ~{git_ref}
+    cd wdl_writer
+
     # The sentence-transformers model is pre-baked into the image at
     # /opt/hf_cache (world-readable so Apptainer's non-root UID can read it);
     # force offline mode so we don't try to phone home (no per-shard download,
@@ -141,8 +142,8 @@ task run_benchmark {
   >>>
 
   output {
-    File results_json = "results_~{safe_name}_~{tier}.json"
-    File server_log = "ollama_server.log"
+    File results_json = "wilds-wdl-writer/wdl_writer/results_~{safe_name}_~{tier}.json"
+    File server_log = "wilds-wdl-writer/wdl_writer/ollama_server.log"
   }
 
   runtime {
@@ -167,27 +168,30 @@ task merge_results {
 
   parameter_meta {
     per_run_json: "Array of per-(model, tier) result JSON files from run_benchmark"
-    bundle: "Tarball (tar.gz) of the wdl_writer package (provides summarize.py)"
+    git_ref: "wilds-wdl-writer git ref to clone (provides summarize.py)"
     cpu_cores: "Number of CPU cores"
     memory_gb: "Memory in GB"
   }
 
   input {
     Array[File] per_run_json
-    File bundle
+    String git_ref
     Int cpu_cores = 1
     Int memory_gb = 2
   }
 
   command <<<
     set -eo pipefail
-    tar -xzf ~{bundle}
+    git clone https://github.com/getwilds/wilds-wdl-writer
+    cd wilds-wdl-writer
+    git checkout ~{git_ref}
+    cd wdl_writer
     python3 summarize.py ~{sep=" " per_run_json}
   >>>
 
   output {
-    File summary_json = "combined_summary.json"
-    File summary_md = "combined_summary.md"
+    File summary_json = "wilds-wdl-writer/wdl_writer/combined_summary.json"
+    File summary_md = "wilds-wdl-writer/wdl_writer/combined_summary.md"
   }
 
   runtime {
