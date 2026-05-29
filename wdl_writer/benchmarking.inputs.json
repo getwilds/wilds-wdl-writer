@@ -8,7 +8,7 @@
     "starcoder2:15b",
     "phi4:14b"
   ],
-  "benchmark_wdl_generation.bundle": "/home/tfirman/bundle.tar.gz",
+  "benchmark_wdl_generation.git_ref": "main",
   "benchmark_wdl_generation.n_runs": 10,
   "benchmark_wdl_generation.tiers": ["raw", "spec", "spec_plus_example", "spec_plus_wilds", "full", "full_plus_rag"]
 }
