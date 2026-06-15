@@ -76,14 +76,15 @@ def _build_filter(contains_filters: list[list[dict]]) -> dict:
     return and_filters
 
 
-def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], set[str], set[str]]:
-    """Filter tasks by keyword, returning (input_ids, tool_ids, op_ids) sets of task ids.
+def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], set[str], set[str], set[str]]:
+    """Filter tasks by keyword, returning (input_ids, tool_ids, op_ids, user_incompatible_tools) sets of task ids.
 
     The keyword_dict must be a dictionary of lists of terms for each metadata
     field we're filtering on.
     """
     client = chromadb.PersistentClient(path=str(_resolve_chroma_dir()))
     collection = client.get_collection(_COLLECTION_NAME)
+    user_incompatible_tools = set()
 
     # Create "contains" filters from user input terms
     filter_species = [{'species': {'$contains': i}} for i in keyword_dict['species']]
@@ -131,7 +132,7 @@ def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], 
             for tool in requested_tools:
                 if tool in meta['tool']:
                     retrieved_tools.add(tool)
-        user_incompatibe_tools = set(requested_tools) - retrieved_tools
+        user_incompatible_tools = set(requested_tools) - retrieved_tools
 
     # Drop operations and topics already covered by tasks retrieved so far.
     requested_ops = keyword_dict['operation']
@@ -157,7 +158,7 @@ def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], 
     # species AND bio_topic AND uncovered_topics AND uncovered_ops
     if not uncovered_ops and not uncovered_topics:
         # Our work here is done
-        return input_ids, tool_ids, set(), user_incompatibe_tools
+        return input_ids, tool_ids, set(), user_incompatible_tools
 
     filter_uncovered_ops = [{'operation': {'$contains': i}} for i in uncovered_ops]
     filter_uncovered_topics = [{'topic': {'$contains': i}} for i in uncovered_topics]
@@ -167,4 +168,4 @@ def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], 
     op_meta = collection.get(where=op_filt, include=['metadatas'])
     op_ids = set(op_meta['ids'])
 
-    return input_ids, tool_ids, op_ids, user_incompatibe_tools
+    return input_ids, tool_ids, op_ids, user_incompatible_tools
