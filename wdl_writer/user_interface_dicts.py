@@ -67,7 +67,7 @@ operation_topic_dict = {
                    ['sequencing']),
     'Pathogen genomic analysis': (['public_health_and_epidemiology'], 
                                   ['public_health_and_epidemiology']),
-    'Proteomic analysis': (['indexing', 'alignemnt'], 
+    'Proteomic analysis': (['indexing', 'alignment'], 
                            ['proteomics', 'protein_expression']),
     'Quality control': (['quality_control', 'sequencing_quality_control', 'sequence_trimming', 'data_filtering', 'visualisation'], 
                         ['data_quality_management']),

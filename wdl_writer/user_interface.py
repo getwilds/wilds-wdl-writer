@@ -1,6 +1,6 @@
 """This module collects user input."""
 
-from user_interface_dicts import data_type_to_topic, input_format_dict, species_dict, tools_dict, operation_topic_dic
+from user_interface_dicts import data_type_to_topic, input_format_dict, species_dict, tools_dict, operation_topic_dict
 from retrieval import keyword_filter_tasks
 
 
@@ -20,7 +20,7 @@ def main():
     format_user_prompt = "----\nQ2 of 5: What format(s) will your input data be in? (enter numbers separated by commas)"
     species_user_prompt = "----\nQ3 of 5: What species is your data from? (choose one)"
     operation_user_prompt = "----\nQ4 of 5: What processing or analysis do you want done? (enter numbers separated by commas)"
-    tool_user_prompt = "----\nQ5 of 5 [optional]:Any preferred bioinformatics tools? (enter numbers separated by commas)"
+    tool_user_prompt = "----\nQ5 of 5 [optional]: Any preferred bioinformatics tools? (enter numbers separated by commas)"
 
     bio_topic, _ = get_terms_from_user(data_type_to_topic, user_topics_user_prompt)
     format_terms, _ = get_terms_from_user(input_format_dict, format_user_prompt)
@@ -39,15 +39,15 @@ def main():
         }
 
     # Get the tasks to be retrieved, along with other info
-    input_filtered_tasks, tool_filtered_tasks, op_filtered_tasks, user_incompatibe_tools = keyword_filter_tasks(keyword_dict)
+    input_filtered_tasks, tool_filtered_tasks, op_filtered_tasks, user_incompatible_tools = keyword_filter_tasks(keyword_dict)
 
     # Tell user if they entered incompatible things
     if not input_filtered_tasks:
         print("\nNo tasks available for this combination of input sequencing data, format, and species\n")
         return
-    if tool_terms and user_incompatibe_tools:
+    if tool_terms and user_incompatible_tools:
         print("\nThese tools have no tasks available for provided inputs:\n",
-              user_incompatibe_tools)
+              user_incompatible_tools)
 
     print('\nRETRIEVED TASKS WILL BE:\n', input_filtered_tasks.union(tool_filtered_tasks).union(op_filtered_tasks))
 

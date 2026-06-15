@@ -99,7 +99,7 @@ def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], 
     # so we need a separate, narrow filter to get tasks compatible with the input.
     #
     # Retrieved WDL task metadata must contain at least one term from each:
-    # species AND bio_topic AND op_topic AND operation AND forma
+    # species AND bio_topic AND op_topic AND operation AND format
     input_filt = _build_filter([filter_species, filter_bio_topic,
                                 filter_op_topic, filter_operation, filter_format])
     input_meta = collection.get(where=input_filt, include=['metadatas'])
