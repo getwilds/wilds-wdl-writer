@@ -1,0 +1,135 @@
+"""Dictionaries of user interface menu options (keys) and database metadata 
+keywords (values)
+
+Note that every dictionary key can capture terms for up to two different 
+categories of metadta. I am only making use of that for the operation dictionary
+which captures (operation, topic) terms.
+"""
+
+data_type_to_topic = {
+    'DNA': (['any', 'genomics'], []),
+    'RNA': (['any', 'transcriptomics'], []),
+    'Epigenomics': (['any', 'epigenomics'], []),
+    'Metagenomics': (['any', 'metagenomics'], []),
+    'Protein': (['any', 'proteomics'], [])
+    }
+
+species_dict = {
+    'Human': (['human'], []),
+    'Non-human eukaryote': (['eukaryote'], []),
+    'Prokaryote': (['prokaryote'], []),
+    'Virus': (['virus'], [])
+    }
+
+input_format_dict = {
+    'BAM': (['bam'], []),
+    'BCF': (['bcf'], []),
+    'BED': (['bed'], []),
+    'BigWig': (['bigwig'], []),
+    'CRAM': (['cram'], []),
+    'CSV': (['csv'], []),
+    'Directory/Folder': (['directory'], []),
+    'FASTA': (['fasta'], []),
+    'FASTQ': (['fastq'], []),
+    'GTF': (['gtf'], []),
+    'Matrix': (['matrix'], []),
+    'NPZ': (['npz'], []),
+    'Pileup': (['pileup'], []),
+    'SAM': (['sam'], []),
+    'TSV': (['tsv'], []),
+    'VCF': (['vcf'], []),
+    'Wig': (['wig'], [])
+    }
+
+operation_topic_dict = {
+    'Alignment': (['sequence_alignment'], ['mapping']),
+    'Alternative splicing prediction': (['alternative_splicing_prediction'], 
+                                        ['rna_splicing']),
+    'Annotate sequence features': (['annotation'], 
+                                   ['sequence_features']),
+    'Annotate variants': (['annotation'], 
+                          ['genomics']),
+    'Assembly': (['sequence_assembly'], 
+                 ['sequence_assembly']),
+    'Data download': (['data_retrieval'], 
+                      ['any']),
+    'Data upload': (['data_deposition'], 
+                    ['any']),
+    'Epigenomic analysis': (['statistical_calculation'], 
+                            ['epigenomics', 'dna_packaging']),
+    'File conversion': (['sequence_conversion', 'data_formatting'], 
+                        ['any']),
+    'File manipulation': (['aggregation','file_handling', 'data_handling', 'splitting'], 
+                          ['any']),
+    'Gene expression': (['rna_seq_quantification', 'quantification'], 
+                        ['gene_expression', 'transcriptomics', 'ribosome_profiling']),
+    'Imputation': (['statistical_calculation', 'splitting', 'aggregation', 'mapping'], 
+                   ['sequencing']),
+    'Pathogen genomic analysis': (['public_health_and_epidemiology'], 
+                                  ['public_health_and_epidemiology']),
+    'Proteomic analysis': (['indexing', 'alignment'], 
+                           ['proteomics', 'protein_expression']),
+    'Quality control': (['quality_control', 'sequencing_quality_control', 'sequence_trimming', 'data_filtering', 'visualisation'], 
+                        ['data_quality_management']),
+    'Sequence classification': (['sequence_classification'], 
+                                ['metagenomics']),
+    'Structure analysis': (['protein_structure_prediction', 'nucleic_acid_structure_analysis', 'rna_secondary_structure_prediction'],
+                            ['protein_structure_analysis', 'protein_disordered_structure', 'nucleic_acid_structure_analysis']),
+    'Variant calling (SNPs and indels)': (['variant_calling', 'indel_detection'], 
+                                          ['dna_mutation', 'dna_polymorphism', 'genomics']),
+    'Variant calling (copy number)': (['copy_number_variation_detection'], 
+                                      ['copy_number_variation']),
+    'Variant calling (structural)': (['variant_calling'], 
+                                     ['structural_variation']),
+}
+
+tools_dict = {
+    'annotsv': (['annotsv'], []),
+    'annovar': (['annovar'], []),
+    'aws-sso': (['aws-sso'], []),
+    'bcftools': (['bcftools'], []),
+    'bedparse': (['bedparse'], []),
+    'bedtools': (['bedtools'], []),
+    'bowtie': (['bowtie'], []),
+    'bowtie2': (['bowtie2'], []),
+    'bwa': (['bwa'], []),
+    'cellranger': (['cellranger'], []),
+    'clair3': (['clair3'], []),
+    'cnvkit': (['cnvkit'], []),
+    'colabfold': (['colabfold'], []),
+    'consensus': (['consensus'], []),
+    'deeptools': (['deeptools'], []),
+    'deepvariant': (['deepvariant'], []),
+    'delly': (['delly'], []),
+    'deseq2': (['deseq2'], []),
+    'diamond': (['diamond'], []),
+    'ena': (['ena'], []),
+    'esmfold': (['esmfold'], []),
+    'fastp': (['fastp'], []),
+    'fastqc': (['fastqc'], []),
+    'gatk': (['gatk'], []),
+    'gdc': (['gdc'], []),
+    'gffread': (['gffread'], []),
+    'glimpse2': (['glimpse2'], []),
+    'ichorcna': (['ichorcna'], []),
+    'jcast': (['jcast'], []),
+    'manta': (['manta'], []),
+    'megahit': (['megahit'], []),
+    'multiqc': (['multiqc'], []),
+    'rmats-turbo': (['rmats-turbo'], []),
+    'rseqc': (['rseqc'], []),
+    'salmon': (['salmon'], []),
+    'samtools': (['samtools'], []),
+    'shapemapper': (['shapemapper'], []),
+    'smoove': (['smoove'], []),
+    'sourmash': (['sourmash'], []),
+    'spades': (['spades'], []),
+    'sra': (['sra'], []),
+    'star': (['star'], []),
+    'starling': (['starling'], []),
+    'strelka': (['strelka'], []),
+    'trimgalore': (['trimgalore'], []),
+    'tritonnp': (['tritonnp'], []),
+    'varscan': (['varscan'], []),
+    'viennarna': (['viennarna'], [])
+    }
