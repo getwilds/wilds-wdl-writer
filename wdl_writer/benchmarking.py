@@ -19,8 +19,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import subprocess
-import tempfile
 import os
 import re
 import json
@@ -30,7 +28,7 @@ from ollama import Client
 from rapidfuzz.distance import Levenshtein
 from sentence_transformers import SentenceTransformer
 
-from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
+from prompts import PROMPT_CONFIGS, build_system, build_user
 from retrieval import retrieve_tasks
 from generation import generate_with_retry
 
