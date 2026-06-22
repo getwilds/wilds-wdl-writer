@@ -1,46 +1,34 @@
 [
   {
     "id": "single_module_passthrough",
-    "pipeline_name": "fastqc-only",
-    "workflow_name": "fastqc_only",
-    "modules": "ww-fastqc",
-    "analysis_goal": "Quality control report for raw sequencing reads",
-    "input_data_type": "Paired FASTQ",
-    "organism": "N/A",
-    "reference_genome": "N/A",
+    "tasks": "fastqc_run_fastqc",
+    "input_data_type": "genomics",
+    "format": "fastq",
+    "species": "human",
     "ground_truth_file": "fastqc.wdl"
   },
   {
     "id": "basic_sra_star",
-    "pipeline_name": "sra-star",
-    "workflow_name": "sra_star",
-    "modules": "ww-sra, ww-star",
-    "analysis_goal": "Download SRA accessions and align reads with STAR two-pass",
-    "input_data_type": "SRA accession IDs",
-    "organism": "Homo sapiens",
-    "reference_genome": "GRCh38",
+    "tasks": "sra_fastqdump,star_build_index,star_build_index,star_align_two_pass",
+    "input_data_type": "transcriptomics",
+    "format": "fastq",
+    "species": "human",
     "ground_truth_file": "ww-sra-star.wdl"
   },
   {
     "id": "intermediate_bwa_gatk",
-    "pipeline_name": "bwa-gatk",
-    "workflow_name": "bwa_gatk",
-    "modules": "ww-bwa, ww-samtools, ww-gatk",
-    "analysis_goal": "Align paired-end DNA-seq reads with BWA, sort with samtools, call germline variants with GATK HaplotypeCaller",
-    "input_data_type": "Paired FASTQ",
-    "organism": "Homo sapiens",
-    "reference_genome": "GRCh38",
+    "tasks": "bwa_bwa_index,bwa_bwa_mem,gatk_mark_duplicates,gatk_create_sequence_dictionary,gatk_base_recalibrator",
+    "input_data_type": "genomics",
+    "format": "fastq",
+    "species": "human",
     "ground_truth_file": "ww-bwa-gatk.wdl"
   },
   {
     "id": "specialized_star_deseq2",
-    "pipeline_name": "star-deseq2",
-    "workflow_name": "star_deseq2",
-    "modules": "ww-star, ww-deseq2",
-    "analysis_goal": "Align RNA-seq reads with STAR and run differential expression analysis with DESeq2",
-    "input_data_type": "Paired FASTQ with sample condition labels",
-    "organism": "Homo sapiens",
-    "reference_genome": "GRCh38",
+    "tasks": "star_build_index,star_align_two_pass,deseq2_combine_count_matrices,deseq2_run_deseq2",
+    "input_data_type": "transcriptomics",
+    "format": "fastq",
+    "species": "human",
     "ground_truth_file": "ww-star-deseq2.wdl"
   }
 ]

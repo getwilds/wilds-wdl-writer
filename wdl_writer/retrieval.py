@@ -36,30 +36,20 @@ def _resolve_chroma_dir() -> Path:
         f"Could not find chroma db. Looked in: {[str(p) for p in _CANDIDATE_PATHS]}"
     )
 
+def retrieve_tasks(tasks_field: str) -> list[str]:
+    """Look up all WDL task definitions for the given comma-separated document ids.
 
-def _strip_prefix(module_name: str) -> str:
-    """`ww-bwa` → `bwa`. ChromaDB metadata stores tool names without the prefix."""
-    return module_name.strip().removeprefix("ww-")
-
-
-def retrieve_tasks(modules_field: str) -> list[str]:
-    """Look up all WDL task definitions for the given comma-separated modules.
-
-    `modules_field` is the raw string from the test case (e.g., `"ww-bwa, ww-samtools, ww-gatk"`).
+    `tasks_field` is the raw string from the test case (e.g., `"ww-bwa, ww-samtools, ww-gatk"`).
     Returns a list of WDL task texts, one per retrieved task, in module-then-task order.
     """
-    modules = [_strip_prefix(m) for m in modules_field.split(",") if m.strip()]
-    if not modules:
+    doc_ids = [m for m in tasks_field.split(",") if m.strip()]
+    if not doc_ids:
         return []
 
     client = chromadb.PersistentClient(path=str(_resolve_chroma_dir()))
     collection = client.get_collection(_COLLECTION_NAME)
-
-    documents = []
-    for tool in modules:
-        result = collection.get(where={"tool": tool}, include=["documents"])
-        documents.extend(result["documents"])
-    return documents
+    result = collection.get(ids=doc_ids, include=["documents"])
+    return result["documents"]
 
 
 def _build_filter(contains_filters: list[list[dict]]) -> dict:
