@@ -5,6 +5,15 @@ from retrieval import keyword_filter_tasks
 
 
 def main():
+    keyword_dictionary = prompt_user_for_keywords()
+    doc_ids_to_retrieve = filter_keywords_for_tasks(keyword_dictionary)
+    print('\nRETRIEVED TASKS WILL BE:\n', doc_ids_to_retrieve)
+
+    # print ('\n\n---DEBUGGING INFO---')
+    # print(keyword_dictionary)
+
+
+def prompt_user_for_keywords():
     print("\nWelcome to the WILDS WDL Writer!\n")
     print(
         "The WDL Writer is NOT A BIOINFORMATICIAN. You should have an idea what "
@@ -38,6 +47,10 @@ def main():
         'tool': tool_terms
         }
 
+    return keyword_dict
+
+def filter_keywords_for_tasks(keyword_dict):
+
     # Get the tasks to be retrieved, along with other info
     input_filtered_tasks, tool_filtered_tasks, op_filtered_tasks, user_incompatible_tools = keyword_filter_tasks(keyword_dict)
 
@@ -45,22 +58,12 @@ def main():
     if not input_filtered_tasks:
         print("\nNo tasks available for this combination of input sequencing data, format, and species\n")
         return
-    if tool_terms and user_incompatible_tools:
+    if keyword_dict['tool'] and user_incompatible_tools:
         print("\nThese tools have no tasks available for provided inputs:\n",
               user_incompatible_tools)
 
-    print('\nRETRIEVED TASKS WILL BE:\n', input_filtered_tasks.union(tool_filtered_tasks).union(op_filtered_tasks))
-
-    # print ('\n\n---DEBUGGING INFO---')
-    # print('bio_topic:\n', bio_topic)
-    # print('format_terms:\n', format_terms)
-    # print('species_terms:\n', species_terms)
-    # print('operation_terms:\n', operation_terms)
-    # print('op_topic:\n', op_topic)
-    # print('tool_terms:\n', tool_terms)
-    # print('input_filtered_tasks:\n', input_filtered_tasks)
-    # print('tool_filtered_tasks:\n', tool_filtered_tasks)
-    # print('op_filtered_tasks:\n', op_filtered_tasks)
+    final_doc_ids = input_filtered_tasks.union(tool_filtered_tasks).union(op_filtered_tasks)
+    return final_doc_ids
 
 
 def get_terms_from_user(term_dict: dict[str, list[str]], prompt: str, required: bool = True) -> set[str]:
