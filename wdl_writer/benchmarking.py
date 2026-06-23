@@ -19,8 +19,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import subprocess
-import tempfile
 import os
 import re
 import json
@@ -30,8 +28,9 @@ from ollama import Client
 from rapidfuzz.distance import Levenshtein
 from sentence_transformers import SentenceTransformer
 
-from prompts import PROMPT_CONFIGS, build_system, build_user, build_retry
+from prompts import PROMPT_CONFIGS, build_system, build_user
 from retrieval import retrieve_tasks
+from generation import generate_with_retry
 
 DEFAULT_CASES_PATH = Path(__file__).parent / "benchmarking_cases.json"
 # In the source repo, ground truths live at evals/data/. In the WDL/sbatch
@@ -81,37 +80,6 @@ def check_retrieved_module_usage(case: dict, to_eval: str) -> bool:
     return expected == found
 
 
-def extract_wdl(text: str) -> str:
-    """Pull WDL out of a code fence, or return the whole thing if no fence."""
-    match = re.search(r"```(?:wdl)?\n(.*?)```", text, re.DOTALL)
-    return match.group(1).strip() if match else text.strip()
-
-
-def validate_wdl(wdl_text: str) -> dict:
-    """Run sprocket check. Returns pass/fail and stderr."""
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".wdl", delete=False) as f:
-        f.write(wdl_text)
-        path = f.name
-    try:
-        result = subprocess.run(
-            ["sprocket", "check", path],
-            capture_output=True, text=True, timeout=30,
-        )
-        return {
-            "valid": result.returncode == 0,
-            "stderr": (result.stderr or result.stdout).strip(),
-        }
-    except subprocess.TimeoutExpired:
-        return {"valid": False, "stderr": "timeout"}
-    finally:
-        os.unlink(path)
-
-
-def chat_call(client: Client, model: str, messages: list[dict]) -> str:
-    """Single chat completion. Returns the assistant message content."""
-    response = client.chat(model=model, messages=messages)
-    return response["message"]["content"]
-
 
 def initial_messages(case: dict, tier: str) -> list[dict]:
     """Build the [system, user] message list for the first attempt."""
@@ -125,43 +93,6 @@ def initial_messages(case: dict, tier: str) -> list[dict]:
         {"role": "system", "content": build_system(**config)},
         {"role": "user", "content": build_user(template_vars)},
     ]
-
-
-def generate_with_retry(client: Client, model: str, case: dict, tier: str, max_retries: int) -> dict:
-    """Generate WDL, retrying on validation failure with the error fed back.
-
-    Returns a dict with the final outcome plus per-attempt history.
-    """
-    messages = initial_messages(case, tier)
-    attempts = []
-
-    for attempt_idx in range(max_retries + 1):
-        raw = chat_call(client, model, messages)
-        wdl = extract_wdl(raw)
-        check = validate_wdl(wdl)
-        attempts.append({
-            "attempt": attempt_idx,
-            "valid": check["valid"],
-            "stderr": check["stderr"],
-            "raw_response": raw,
-            "extracted_wdl": wdl,
-        })
-        if check["valid"] or attempt_idx == max_retries:
-            break
-        # Continue the conversation: include the failed WDL and the sprocket error.
-        messages.append({"role": "assistant", "content": raw})
-        messages.append({"role": "user", "content": build_retry(check["stderr"])})
-
-    final = attempts[-1]
-    return {
-        "valid": final["valid"],
-        "stderr": final["stderr"],
-        "raw_response": final["raw_response"],
-        "extracted_wdl": final["extracted_wdl"],
-        "attempts": attempts,
-        "first_attempt_valid": attempts[0]["valid"],
-        "attempts_used": len(attempts),
-    }
 
 
 def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: list[dict], max_retries: int, embed_model: SentenceTransformer) -> list[dict]:
@@ -182,7 +113,7 @@ def run_eval(client: Client, model: str, n_runs: int, tiers: list[str], cases: l
             retrieved_module_passes = []
             ground_truth = load_ground_truth(case["ground_truth_file"])
             for i in range(n_runs):
-                result = generate_with_retry(client, model, case, tier, max_retries)
+                result = generate_with_retry(client, model, initial_messages(case, tier), max_retries)
                 run_record = {"run": i, **result}
                 result_wdl = result["extracted_wdl"]
                 # Lexical evaluation
