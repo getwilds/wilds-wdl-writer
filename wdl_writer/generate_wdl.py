@@ -26,6 +26,7 @@ def main():
         return
 
     print(f"Found {len(confirmed_ids)} relevant task(s).")
+    print(f"Tasks presented to LLM will be:\n{confirmed_ids}")
 
     # RAG step 2: fetch documents for the confirmed tasks
     retrieved_examples = retrieve_tasks(", ".join(confirmed_ids))
