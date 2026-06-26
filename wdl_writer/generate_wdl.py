@@ -10,7 +10,7 @@ from retrieval import retrieve_tasks
 from prompts import build_system, build_user
 from generation import generate_with_retry
 
-_MODEL = "llama3.1:8b"
+_MODEL = "llama3.2:3b"
 _HOST = "http://localhost:11434"
 _MAX_RETRIES = 3
 
