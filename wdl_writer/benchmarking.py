@@ -3,12 +3,12 @@
 
 Evaluates how well local open-source LLMs (served via Ollama) generate valid
 WILDS WDL pipelines, graded by `sprocket check`. Each test case is a dropdown-
-style input set (pipeline name, modules, analysis goal, etc.) rendered through
+style input set (tasks, input data type, format, species) rendered through
 `build_user()`; the system prompt is varied across prompt tiers to measure the
 contribution of each context layer (WDL spec, minimal example, WILDS conventions).
 
 Usage:
-    python benchmarking.py                                      # all defaults
+    python benchmarking.py                                      # prints help
     python benchmarking.py --model gemma3:4b                    # specific model
     python benchmarking.py --tiers spec spec_plus_wilds         # subset of tiers
     python benchmarking.py --n-runs 10              # more runs per case
@@ -22,6 +22,7 @@ import argparse
 import os
 import re
 import json
+import sys
 from pathlib import Path
 import numpy as np
 from ollama import Client
@@ -75,7 +76,7 @@ def semantic_similarity(embed_model: SentenceTransformer, ref: str, to_eval: str
 
 def check_retrieved_module_usage(case: dict, to_eval: str) -> bool:
     """Confirm that retrieved modules appear in the output WDL imports."""
-    expected = {m.strip() for m in case["modules"].split(",")}
+    expected = {t.strip().split("_", 1)[0] for t in case["tasks"].split(",")}
     found = set(re.findall(r'ww-[\w-]+(?=/ww-[\w-]+\.wdl)', to_eval))
     return expected == found
 
@@ -88,7 +89,7 @@ def initial_messages(case: dict, tier: str) -> list[dict]:
     config = {**PROMPT_CONFIGS[tier]}
     use_rag = config.pop("use_rag", False)
     if use_rag:
-        config["retrieved_examples"] = retrieve_tasks(case.get("modules", ""))
+        config["retrieved_examples"] = retrieve_tasks(case.get("tasks", ""))
     return [
         {"role": "system", "content": build_system(**config)},
         {"role": "user", "content": build_user(template_vars)},
@@ -185,6 +186,11 @@ def main():
     parser.add_argument("--output", default="results.json", help="Output JSON file (default: results.json)")
     parser.add_argument("--cases", default=str(DEFAULT_CASES_PATH), help=f"Test case JSON file (default: {DEFAULT_CASES_PATH.name})")
     parser.add_argument("--max-retries", type=int, default=3, help="Max validator-feedback retries per run (default: 3, 0 disables)")
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
 
     with open(args.cases) as f:
