@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 from ollama import Client
 
 from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks
@@ -10,8 +11,8 @@ from retrieval import retrieve_tasks
 from prompts import build_system, build_user
 from generation import generate_with_retry
 
-_MODEL = "llama3.2:3b"
-_HOST = "http://localhost:11434"
+_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _MAX_RETRIES = 3
 
 
