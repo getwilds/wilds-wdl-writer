@@ -8,7 +8,7 @@ style input set (tasks, input data type, format, species) rendered through
 contribution of each context layer (WDL spec, minimal example, WILDS conventions).
 
 Usage:
-    python benchmarking.py                                      # all defaults
+    python benchmarking.py                                      # prints help
     python benchmarking.py --model gemma3:4b                    # specific model
     python benchmarking.py --tiers spec spec_plus_wilds         # subset of tiers
     python benchmarking.py --n-runs 10              # more runs per case
@@ -22,6 +22,7 @@ import argparse
 import os
 import re
 import json
+import sys
 from pathlib import Path
 import numpy as np
 from ollama import Client
@@ -185,6 +186,11 @@ def main():
     parser.add_argument("--output", default="results.json", help="Output JSON file (default: results.json)")
     parser.add_argument("--cases", default=str(DEFAULT_CASES_PATH), help=f"Test case JSON file (default: {DEFAULT_CASES_PATH.name})")
     parser.add_argument("--max-retries", type=int, default=3, help="Max validator-feedback retries per run (default: 3, 0 disables)")
+
+    if len(sys.argv) == 1:
+        parser.print_help()
+        sys.exit(0)
+
     args = parser.parse_args()
 
     with open(args.cases) as f:
