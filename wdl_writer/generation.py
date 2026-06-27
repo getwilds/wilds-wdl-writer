@@ -43,9 +43,14 @@ def validate_wdl(wdl_text: str) -> dict:
 
 
 def chat_call(client: Client, model: str, messages: list[dict]) -> str:
-    """Single chat completion. Returns the assistant message content."""
-    response = client.chat(model=model, messages=messages)
-    return response["message"]["content"]
+    """Single chat completion with streaming dot progress. Returns the assistant message content."""
+    chunks = []
+    for chunk in client.chat(model=model, messages=messages, stream=True):
+        token = chunk["message"]["content"]
+        chunks.append(token)
+        print(".", end="", flush=True)
+    print()
+    return "".join(chunks)
 
 
 def generate_with_retry(
