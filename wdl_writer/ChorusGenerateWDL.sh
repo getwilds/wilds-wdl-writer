@@ -38,4 +38,4 @@ REPO_DIR="$HOME/wilds-wdl-writer"
 export OLLAMA_HOST="http://localhost:11434"
 export OLLAMA_MODEL="gemma4-64k"
 cd "$REPO_DIR/wdl_writer"
-python generate_wdl.py
+python3 generate_wdl.py
