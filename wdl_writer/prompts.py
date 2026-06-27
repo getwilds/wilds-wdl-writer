@@ -58,9 +58,13 @@ def build_user(template_vars: dict[str, str]) -> str:
     return result
 
 
-def build_retry(stderr: str) -> str:
+def build_retry(stderr: str, retrieved_examples: list[str] | None = None) -> str:
     """Render the retry prompt with the validator's error output."""
-    return _RETRY.replace("{{stderr}}", stderr)
+    result = _RETRY.replace("{{stderr}}", stderr)
+    if retrieved_examples:
+        result += ("\n\nFor reference, here are the exact task definitions you must use:\n\n"
+                   + "\n\n---\n\n".join(retrieved_examples))
+    return result
 
 
 # Ablation tiers for benchmarking. Each value is kwargs for build_system(),

@@ -59,6 +59,7 @@ def generate_with_retry(
     model: str,
     messages: list[dict],
     max_retries: int,
+    retrieved_examples: list[str] | None = None,
 ) -> dict:
     """Generate WDL, retrying on validation failure with the error fed back.
 
@@ -87,7 +88,7 @@ def generate_with_retry(
         if check["valid"] or attempt_idx == max_retries:
             break
         messages.append({"role": "assistant", "content": raw})
-        messages.append({"role": "user", "content": build_retry(check["stderr"])})
+        messages.append({"role": "user", "content": build_retry(check["stderr"], retrieved_examples)})
 
     final = attempts[-1]
     return {

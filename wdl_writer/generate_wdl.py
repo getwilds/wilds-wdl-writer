@@ -13,7 +13,7 @@ from generation import generate_with_retry
 
 _MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 _HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-_MAX_RETRIES = int(os.environ.get("WDL_MAX_RETRIES", 3))
+_MAX_RETRIES = int(os.environ.get("WDL_MAX_RETRIES", 5))
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
     # Generate
     print("\nGenerating WDL workflow (this may take a while)...")
     client = Client(host=_HOST)
-    result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES)
+    result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES, retrieved_examples)
 
     # Display result
     print("\n" + "=" * 80)
