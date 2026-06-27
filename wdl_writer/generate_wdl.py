@@ -13,7 +13,7 @@ from generation import generate_with_retry
 
 _MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 _HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-_MAX_RETRIES = 3
+_MAX_RETRIES = int(os.environ.get("WDL_MAX_RETRIES", 3))
 
 
 def main():
@@ -61,7 +61,7 @@ def main():
         print("Validation passed.")
     else:
         print(f"Validation failed after {result['attempts_used']} attempt(s).")
-        print(f"Errors: {result['stderr'][:300]}")
+        print(f"Errors:\n{result['stderr']}")
     if result["attempts_used"] > 1:
         print(f"Generated in {result['attempts_used']} attempt(s).")
     print("=" * 80)
