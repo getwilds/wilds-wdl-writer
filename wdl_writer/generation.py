@@ -76,7 +76,7 @@ def generate_with_retry(
         print("Validating...", end=" ", flush=True)
         wdl = extract_wdl(raw)
         check = validate_wdl(wdl)
-        print("passed." if check["valid"] else "failed.")
+        print("passed." if check["valid"] else f"failed.\n{check['stderr']}")
         attempts.append({
             "attempt": attempt_idx,
             "valid": check["valid"],
