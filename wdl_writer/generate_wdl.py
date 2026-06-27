@@ -53,7 +53,7 @@ def main():
     # Generate
     print("\nGenerating WDL workflow (this may take a while)...")
     client = Client(host=_HOST)
-    result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES, retrieved_examples)
+    result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES)
 
     # Display result
     print("\n" + "=" * 80)
