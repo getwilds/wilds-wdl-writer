@@ -128,11 +128,13 @@ if submitted:
                 st.write("Validation passed!")
                 break
             elif attempt_idx < _MAX_RETRIES:
-                st.write(f"Validation failed:\n```\n{check['stderr']}\n```")
+                with st.expander(f"Validation failed — attempt {attempt_idx + 1}"):
+                    st.code(check["stderr"])
                 messages.append({"role": "assistant", "content": raw})
                 messages.append({"role": "user", "content": build_retry(check["stderr"])})
             else:
-                st.write(f"Validation failed after all retries:\n```\n{check['stderr']}\n```")
+                with st.expander(f"Validation failed after all retries — attempt {attempt_idx + 1}"):
+                    st.code(check["stderr"])
 
         final = attempts[-1]
         status.update(
