@@ -78,11 +78,11 @@ Bioinformaticians (primary) and postdocs and grad students (secondary).
 - WDL generation using a local LLM
 - WDL validation with automatic retry
 - Human-in-the-loop final review and save to disk
+- Basic Streamlit web UI as a first-draft alternative to the CLI (same underlying pipeline; not yet feature-complete — see Section 14 for planned improvements)
 
 **Out of Scope:**
 
 - Fine-tuning LLMs
-- Web or graphical user interface
 - Cloud or cluster execution
 - Workflow execution (users run WDLs themselves)
 - History or storage of past sessions
@@ -394,7 +394,7 @@ All components run locally on the developer's laptop. No external service calls.
 
 ## 14. Future Work
 
-- Streamlit web UI (web form, tool review page, WDL display with copy/download)
+- Streamlit UI polish: tool review/approval checkpoint (currently CLI-only), editable final review before download
 - Deployment on Fred Hutch cluster (Docker Swarm or equivalent)
 - Session history / saved past runs
 - Email notification when WDL generation is complete
