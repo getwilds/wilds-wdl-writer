@@ -43,9 +43,15 @@ def validate_wdl(wdl_text: str) -> dict:
 
 
 def chat_call(client: Client, model: str, messages: list[dict]) -> str:
-    """Single chat completion. Returns the assistant message content."""
-    response = client.chat(model=model, messages=messages)
-    return response["message"]["content"]
+    """Single chat completion with streaming dot progress. Returns the assistant message content."""
+    chunks = []
+    for i, chunk in enumerate(client.chat(model=model, messages=messages, stream=True)):
+        token = chunk["message"]["content"]
+        chunks.append(token)
+        if i % 10 == 0:
+            print(".", end="", flush=True)
+    print()
+    return "".join(chunks)
 
 
 def generate_with_retry(
@@ -65,9 +71,12 @@ def generate_with_retry(
     attempts = []
 
     for attempt_idx in range(max_retries + 1):
+        print(f"Attempt {attempt_idx + 1} of {max_retries + 1}: generating", end="", flush=True)
         raw = chat_call(client, model, messages)
+        print("Validating...", end=" ", flush=True)
         wdl = extract_wdl(raw)
         check = validate_wdl(wdl)
+        print("passed." if check["valid"] else f"failed.\n{check['stderr']}")
         attempts.append({
             "attempt": attempt_idx,
             "valid": check["valid"],

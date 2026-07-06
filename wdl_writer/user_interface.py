@@ -1,5 +1,6 @@
 """This module collects user input."""
 
+import shutil
 from user_interface_dicts import data_type_to_topic, input_format_dict, species_dict, tools_dict, operation_topic_dict
 from retrieval import keyword_filter_tasks
 
@@ -73,9 +74,16 @@ def get_terms_from_user(term_dict: dict[str, list[str]], prompt: str, required: 
 
     while True:
         print(prompt)
-        # Print numbered options
-        for i, option in enumerate(options, 0):
-            print(f"  {i}. {option}")
+        term_width = shutil.get_terminal_size().columns
+        col_width = max(len(f"  {i}. {o}") for i, o in enumerate(options)) + 2
+        n_cols = min(len(options), max(1, term_width // col_width))
+        n_rows = -(-len(options) // n_cols)  # ceiling division
+        for row in range(n_rows):
+            for col in range(n_cols):
+                idx = col * n_rows + row
+                if idx < len(options):
+                    print(f"  {idx}. {options[idx]}".ljust(col_width), end="")
+            print()
 
         # Interpret the user inpu
         raw_input = input("> ").strip()
@@ -98,6 +106,7 @@ def get_terms_from_user(term_dict: dict[str, list[str]], prompt: str, required: 
             print("ERROR: Please enter numbers only\n")
             continue
 
+        print(f"Selected: {', '.join(options[i] for i in indices)}\n")
 
         # Use the indices (keys) to grab all the terms (values) from the dic
         terms_1 = []

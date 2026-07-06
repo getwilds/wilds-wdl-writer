@@ -18,6 +18,7 @@ Requirements (so far):
 - `rapidfuzz`
 - `llama-index-core`
 - `llama-index-embeddings-huggingface`
+- `streamlit`
 
 ---
 ### Schema
