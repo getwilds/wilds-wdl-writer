@@ -1,16 +1,22 @@
 """This module collects user input."""
 
 import shutil
+import sys
 from user_interface_dicts import data_type_to_topic, input_format_dict, species_dict, tools_dict, operation_topic_dict
 from retrieval import keyword_filter_tasks
 
 
 def main():
-    keyword_dictionary = prompt_user_for_keywords()
-    doc_ids_to_retrieve = filter_keywords_for_tasks(keyword_dictionary)
-    print('\nRETRIEVED TASKS WILL BE:\n', doc_ids_to_retrieve)
+    keyword_dict = prompt_user_for_keywords()
 
-    # print ('\n\n---DEBUGGING INFO---')
+    # RAG step 1: filter tasks by keyword metadata
+    print("\nSearching for relevant WDL tasks...")
+    final_retrieved_ids = filter_keywords_for_tasks(keyword_dict)
+
+    print(f"Found {len(final_retrieved_ids)} relevant task(s).")
+    human_approved_ids = human_tool_approval(final_retrieved_ids)
+    print(f"WDL tasks that will be presented to the LLM:\n{human_approved_ids}")
+
     # print(keyword_dictionary)
 
 
