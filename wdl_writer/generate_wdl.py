@@ -21,16 +21,16 @@ def main():
 
     # RAG step 1: filter tasks by keyword metadata
     print("\nSearching for relevant WDL tasks...")
-    confirmed_ids = filter_keywords_for_tasks(keyword_dict)
+    final_retrieved_ids = filter_keywords_for_tasks(keyword_dict)
 
-    if not confirmed_ids:
+    if not final_retrieved_ids:
         return
 
-    print(f"Found {len(confirmed_ids)} relevant task(s).")
-    print(f"Tasks presented to LLM will be:\n{confirmed_ids}")
+    print(f"Found {len(final_retrieved_ids)} relevant task(s).")
+    print(f"Tasks presented to LLM will be:\n{final_retrieved_ids}")
 
     # RAG step 2: fetch documents for the confirmed tasks
-    retrieved_examples = retrieve_tasks(", ".join(confirmed_ids))
+    retrieved_examples = retrieve_tasks(", ".join(final_retrieved_ids))
 
     # Build prompt
     system_prompt = build_system(
@@ -40,7 +40,7 @@ def main():
         retrieved_examples=retrieved_examples,
     )
     template_vars = {
-        "tasks": ", ".join(confirmed_ids),
+        "tasks": ", ".join(final_retrieved_ids),
         "input_data_type": ", ".join(keyword_dict["bio_topic"]),
         "format": ", ".join(keyword_dict["format"]),
         "species": ", ".join(keyword_dict["species"]),
