@@ -124,5 +124,61 @@ def get_terms_from_user(term_dict: dict[str, list[str]], prompt: str, required: 
         return terms1, terms2
 
 
+def human_tool_approval(retrieved_task_ids: set[str]) -> set[str]:
+    """Present the tools used by retrieved_task_ids as menu options, then filter to the tools the user approves."""
+
+    tools = sorted({task_id.split('_', 1)[0] for task_id in retrieved_task_ids})
+    prompt = ("----\nTasks from these tools will be given to the LLM for consideration. "
+              "Which do you want to keep? Note that some may be important utilities.\n"
+              "Enter numbers separated by commas, or type 'all' or 'none'.")
+
+    while True:
+        print(prompt)
+        term_width = shutil.get_terminal_size().columns
+        col_width = max(len(f"  {i}. {o}") for i, o in enumerate(tools)) + 2
+        n_cols = min(len(tools), max(1, term_width // col_width))
+        n_rows = -(-len(tools) // n_cols)  # ceiling division
+        for row in range(n_rows):
+            for col in range(n_cols):
+                idx = col * n_rows + row
+                if idx < len(tools):
+                    print(f"  {idx}. {tools[idx]}".ljust(col_width), end="")
+            print()
+
+        raw_input = input("> ").strip()
+
+        if raw_input.lower() == 'all':
+            approved_tools = set(tools)
+        elif raw_input.lower() == 'none':
+            print(
+                "\nIt seems we don't have the tools you would prefer. You may try running "
+                "the tool again and making different selections.\n"
+                "You can also request tools be added to the WILDS WDL Library by filing an "
+                "issue: https://github.com/getwilds/wilds-wdl-library\n"
+            )
+            sys.exit(0)
+        elif not raw_input:
+            print("ERROR: Must choose at least one, or type 'all' or 'none'\n")
+            continue
+        else:
+            try:
+                indices = [int(x.strip()) for x in raw_input.split(",")]
+                if max(indices) > len(tools) - 1:
+                    print('ERROR: Please only select from numbers below and separate with commas')
+                    continue
+                if min(indices) < 0:
+                    print('ERROR: Please only select from numbers below and separate with commas')
+                    continue
+            except ValueError:
+                print("ERROR: Please enter numbers only, or type 'all' or 'none'\n")
+                continue
+            approved_tools = {tools[i] for i in indices}
+
+        print(f"Selected: {', '.join(sorted(approved_tools)) if approved_tools else 'none'}\n")
+
+        # Keep only the task ids whose tool was approved
+        return {task_id for task_id in retrieved_task_ids if task_id.split('_', 1)[0] in approved_tools}
+
+
 if __name__ == "__main__":
     main()
