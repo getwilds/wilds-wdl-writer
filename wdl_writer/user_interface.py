@@ -13,6 +13,9 @@ def main():
     print("\nSearching for relevant WDL tasks...")
     final_retrieved_ids = filter_keywords_for_tasks(keyword_dict)
 
+    if not final_retrieved_ids:
+        print("No relevant tasks found.")
+
     print(f"Found {len(final_retrieved_ids)} relevant task(s).")
     human_approved_ids = human_tool_approval(final_retrieved_ids)
     print(f"WDL tasks that will be presented to the LLM:\n{human_approved_ids}")
