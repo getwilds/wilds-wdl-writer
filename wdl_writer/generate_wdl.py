@@ -6,7 +6,7 @@ from __future__ import annotations
 import os
 from ollama import Client
 
-from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks
+from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks, human_tool_approval
 from retrieval import retrieve_tasks
 from prompts import build_system, build_user
 from generation import generate_with_retry
@@ -21,16 +21,19 @@ def main():
 
     # RAG step 1: filter tasks by keyword metadata
     print("\nSearching for relevant WDL tasks...")
-    confirmed_ids = filter_keywords_for_tasks(keyword_dict)
+    final_retrieved_ids = filter_keywords_for_tasks(keyword_dict)
 
-    if not confirmed_ids:
+    if not final_retrieved_ids:
         return
 
-    print(f"Found {len(confirmed_ids)} relevant task(s).")
-    print(f"Tasks presented to LLM will be:\n{confirmed_ids}")
+    print(f"Found {len(final_retrieved_ids)} relevant task(s).")
+
+    human_approved_ids = human_tool_approval(final_retrieved_ids)
+
+    print(f"Tasks that will be presented to LLM (displaying modulename_taskname) :\n{human_approved_ids}")
 
     # RAG step 2: fetch documents for the confirmed tasks
-    retrieved_examples = retrieve_tasks(", ".join(confirmed_ids))
+    retrieved_examples = retrieve_tasks(", ".join(human_approved_ids))
 
     # Build prompt
     system_prompt = build_system(
@@ -40,7 +43,7 @@ def main():
         retrieved_examples=retrieved_examples,
     )
     template_vars = {
-        "tasks": ", ".join(confirmed_ids),
+        "tasks": ", ".join(human_approved_ids),
         "input_data_type": ", ".join(keyword_dict["bio_topic"]),
         "format": ", ".join(keyword_dict["format"]),
         "species": ", ".join(keyword_dict["species"]),
