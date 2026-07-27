@@ -15,6 +15,7 @@ def main():
 
     if not final_retrieved_ids:
         print("No relevant tasks found.")
+        return
 
     print(f"Found {len(final_retrieved_ids)} relevant task(s).")
     human_approved_ids = human_tool_approval(final_retrieved_ids)
