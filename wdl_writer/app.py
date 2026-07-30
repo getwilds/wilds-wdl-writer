@@ -32,6 +32,14 @@ st.caption(
     "data you have and the processing steps you need to take."
 )
 
+# Simple two-stage flow, tracked in session_state so the tool-approval step
+# survives the rerun that Streamlit triggers on every widget interaction:
+#   "form"     -> collect Q1-Q5 and run keyword filtering
+#   "approval" -> human-in-the-loop: approve/reject retrieved tools
+#   "done"     -> generation already ran; show results
+if "stage" not in st.session_state:
+    st.session_state.stage = "form"
+
 with st.form("wdl_inputs"):
     st.subheader("Q1: What kind of sequencing data do you have?")
     bio_selections = st.multiselect("Select one (usually)", list(data_type_to_topic.keys()))
@@ -48,7 +56,7 @@ with st.form("wdl_inputs"):
     st.subheader("Q5: Any preferred bioinformatics tools? (optional)")
     tool_selections = st.multiselect("Select all that apply", list(tools_dict.keys()))
 
-    submitted = st.form_submit_button("Generate WDL")
+    submitted = st.form_submit_button("Find relevant tasks")
 
 if submitted:
     # Validate required fields
@@ -87,7 +95,63 @@ if submitted:
         st.error("No tasks available for this combination of inputs. Try broadening your selections.")
         st.stop()
 
-    st.info(f"Found {len(confirmed_ids)} relevant task(s): {', '.join(sorted(confirmed_ids))}")
+    # Stash inputs for the approval/generation stages and advance
+    st.session_state.keyword_dict = keyword_dict
+    st.session_state.retrieved_ids = confirmed_ids
+    st.session_state.stage = "approval"
+
+if st.session_state.stage == "approval":
+    retrieved_ids = st.session_state.retrieved_ids
+    available_tools = sorted({task_id.split("_", 1)[0] for task_id in retrieved_ids})
+
+    st.subheader("Approve tools")
+    st.write(
+        f"Found {len(retrieved_ids)} relevant task(s) from these tools. Tasks from these tools "
+        "will be given to the LLM for consideration. Which do you want to keep? "
+        "Note that some may be important utilities."
+    )
+    approved_tools = st.multiselect(
+        "Tools to keep",
+        available_tools,
+        default=available_tools,
+        key="approved_tools",
+    )
+
+    col1, col2 = st.columns([1, 5])
+    with col1:
+        approve_clicked = st.button("Confirm selection", type="primary")
+    with col2:
+        restart_clicked = st.button("Start over")
+
+    if restart_clicked:
+        st.session_state.stage = "form"
+        for key in ("keyword_dict", "retrieved_ids", "approved_tools"):
+            st.session_state.pop(key, None)
+        st.rerun()
+
+    if approve_clicked:
+        if not approved_tools:
+            st.error(
+                "It seems we don't have the tools you would prefer. Try going back and making "
+                "different selections, or request tools be added to the WILDS WDL Library by "
+                "filing an issue: https://github.com/getwilds/wilds-wdl-library"
+            )
+            st.stop()
+
+        approved_ids = {
+            task_id for task_id in retrieved_ids if task_id.split("_", 1)[0] in approved_tools
+        }
+        st.session_state.confirmed_ids = approved_ids
+        st.session_state.stage = "generate"
+        st.rerun()
+
+    st.stop()
+
+if st.session_state.stage == "generate":
+    keyword_dict = st.session_state.keyword_dict
+    confirmed_ids = st.session_state.confirmed_ids
+
+    st.info(f"Tasks that will be given to the LLM: {', '.join(sorted(confirmed_ids))}")
 
     retrieved_examples = retrieve_tasks(", ".join(confirmed_ids))
 
@@ -142,6 +206,13 @@ if submitted:
             state="complete" if final["valid"] else "error",
         )
 
+    st.session_state.final_result = final
+    st.session_state.stage = "done"
+    st.rerun()
+
+if st.session_state.stage == "done":
+    final = st.session_state.final_result
+
     st.subheader("Generated WDL")
     st.code(final["wdl"], language="wdl")
     st.download_button(
@@ -155,3 +226,8 @@ if submitted:
         "For help running your WDL, contact OCDO via "
         "[Data House Calls](https://ocdo.fredhutch.org/programs/data-house-calls.html)."
     )
+
+    if st.button("Start a new workflow"):
+        for key in ("stage", "keyword_dict", "retrieved_ids", "approved_tools", "confirmed_ids", "final_result"):
+            st.session_state.pop(key, None)
+        st.rerun()
