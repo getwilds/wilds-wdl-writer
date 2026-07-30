@@ -17,6 +17,8 @@ from pathlib import Path
 
 import chromadb
 
+from user_interface_dicts import operation_topic_dict
+
 _HERE = Path(__file__).parent
 # Look for chroma in two places: bundle root (sibling of this file) for
 # WDL/HPC runs, then ../data/chroma/ for in-repo development runs.
@@ -124,23 +126,30 @@ def keyword_filter_tasks(keyword_dict: dict[str, list[str]]) -> tuple[set[str], 
                     retrieved_tools.add(tool)
         user_incompatible_tools = set(requested_tools) - retrieved_tools
 
-    # Drop operations and topics already covered by tasks retrieved so far.
-    requested_ops = keyword_dict['operation']
-    covered_ops = set()
+    # Drop Q4 checkboxes already covered by tasks retrieved so far. Each checkbox
+    # is one (operations, topics) pair in operation_topic_dict -- e.g. "Annotate
+    # variants" is (['annotation'], ['genomics']). A checkbox only counts as
+    # covered if a retrieved task's operation actually matches THAT checkbox's own
+    # operations; matching only on topic isn't enough, since unrelated checkboxes
+    # can share a topic (e.g. variant calling and variant annotation are both
+    # tagged 'genomics', but finding a variant caller doesn't mean annotation is
+    # covered too).
+    requested_pairs = [pair for pair in operation_topic_dict.values()
+                        if set(pair[0]) <= set(keyword_dict['operation'])]
 
-    requested_op_topics = keyword_dict['op_topic']
-    covered_op_topics = set()
-
+    already_retrieved_ops = set()
     for meta in input_meta['metadatas'] + tool_metadata:
-        for op in requested_ops:
-            if op in meta['operation']:
-                covered_ops.add(op)
-        for op_topic in requested_op_topics:
-            if op_topic in meta['topic']:
-                covered_op_topics.add(op_topic)
+        already_retrieved_ops.update(meta['operation'])
 
-    uncovered_ops = list(set(requested_ops) - covered_ops)
-    uncovered_topics = list(set(requested_op_topics) - covered_op_topics)
+    uncovered_ops = set()
+    uncovered_topics = set()
+    for pair_ops, pair_topics in requested_pairs:
+        if not already_retrieved_ops.intersection(pair_ops):
+            uncovered_ops.update(pair_ops)
+            uncovered_topics.update(pair_topics)
+
+    uncovered_ops = list(uncovered_ops)
+    uncovered_topics = list(uncovered_topics)
 
     # Get tasks for remaining operations.
     #
