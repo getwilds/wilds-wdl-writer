@@ -213,6 +213,11 @@ if st.session_state.stage == "generate":
 if st.session_state.stage == "done":
     final = st.session_state.final_result
 
+    if not final["valid"]:
+        st.warning("Invalid WDL — showing the best attempt so far. It may need manual fixes before it will run.")
+        with st.expander("Validation error"):
+            st.code(final["stderr"])
+
     st.subheader("Generated WDL")
     st.code(final["wdl"], language="wdl")
     st.download_button(
