@@ -8,6 +8,7 @@ from ollama import Client
 
 from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks, human_tool_approval
 from retrieval import retrieve_tasks
+from ingestion import format_tasks_as_yaml
 from prompts import build_system, build_user
 from generation import generate_with_retry
 
@@ -35,12 +36,22 @@ def main():
     # RAG step 2: fetch documents for the confirmed tasks
     retrieved_examples = retrieve_tasks(",".join(human_approved_ids))
 
+    # Extract relevant metadata from the retrieved tasks for the LLM, formatted
+    # as YAML so a small model can parse it easily
+    wdl_meta_for_llm = format_tasks_as_yaml(retrieved_examples)
+
+    # # FOR DEBUGGING
+    # print('\n\n')
+    # print(retrieved_examples)
+    # print('\n\n')
+    # print(wdl_meta_for_llm)
+
     # Build prompt
     system_prompt = build_system(
         include_spec=True,
         include_example=True,
         include_wilds=True,
-        retrieved_examples=retrieved_examples,
+        retrieved_examples=[wdl_meta_for_llm],
     )
     template_vars = {
         "tasks": ", ".join(human_approved_ids),
