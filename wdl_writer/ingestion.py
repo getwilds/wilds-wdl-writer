@@ -107,10 +107,11 @@ def parse_meta(task: str,
         extracted_meta.update(ontology_meta)
     return extracted_meta
 
-
+# Meta fields to pull from retrieved WDL tasks and present to LLM
 _LLM_META_TAGS = [
     'description',
     'url',
+    'operation',
     'input_sample_required',
     'input_reference_required',
     'output_sample',
