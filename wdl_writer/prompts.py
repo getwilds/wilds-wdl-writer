@@ -17,6 +17,7 @@ _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _SPEC = (_PROMPTS_DIR / "system_spec.md").read_text()
 _EXAMPLE = (_PROMPTS_DIR / "system_example.md").read_text()
 _WILDS = (_PROMPTS_DIR / "system_wilds.md").read_text()
+_RAG_SCHEMA = (_PROMPTS_DIR / "system_rag_schema.md").read_text()
 _USER_TEMPLATE = (_PROMPTS_DIR / "user_template.md").read_text()
 _RETRY = (_PROMPTS_DIR / "retry_prompt.md").read_text()
 
@@ -45,7 +46,8 @@ def build_system(
     if include_wilds:
         parts.append(_WILDS)
     if retrieved_examples:
-        parts.append("REFERENCE WDL EXAMPLES (for inspiration, do not copy verbatim):\n\n"
+        parts.append(_RAG_SCHEMA)
+        parts.append("RETRIEVED TASK METADATA (candidate tasks for this workflow):\n\n"
                      + "\n\n---\n\n".join(retrieved_examples))
     return "\n\n".join(parts)
 
