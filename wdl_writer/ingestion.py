@@ -119,7 +119,7 @@ _LLM_META_TAGS = [
 ]
 
 
-def format_tasks_as_yaml(retrieved_examples: list[str]) -> str:
+def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
     """Format retrieved WDL tasks' metadata as YAML, keyed by task name
 
     Extracts the metadata tags a small LLM needs from each retrieved task
