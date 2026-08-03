@@ -60,7 +60,7 @@ def prompt_user_for_keywords():
 
     return keyword_dict
 
-def filter_keywords_for_tasks(keyword_dict):
+def filter_keywords_for_tasks(keyword_dict: dict[str, set[str]]) -> set[str]:
 
     # Get the tasks to be retrieved, along with other info
     input_filtered_tasks, tool_filtered_tasks, op_filtered_tasks, user_incompatible_tools = keyword_filter_tasks(keyword_dict)
