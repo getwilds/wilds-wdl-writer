@@ -138,9 +138,9 @@ def human_tool_approval(retrieved_task_ids: set[str]) -> set[str]:
     """Present the tools used by retrieved_task_ids as menu options, then filter to the tools the user approves."""
 
     tools = sorted({task_id.split('_', 1)[0] for task_id in retrieved_task_ids})
-    prompt = ("----\nTasks from these tools will be given to the LLM for consideration. "
-              "Which do you want to keep? Note that some may be important utilities.\n"
-              "Enter numbers separated by commas, or type 'all' or 'none'.")
+    prompt = ("----\nTasks from these WILDS WDL modules will be given to the LLM for consideration, "
+              "which do you want to keep? Enter numbers separated by commas, or type 'all' or 'none'.\n"
+              "Note that some may be important utilities.\n")
 
     while True:
         print(prompt)
