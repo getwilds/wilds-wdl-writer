@@ -33,7 +33,7 @@ def main():
     print(f"Tasks that will be presented to LLM (displaying modulename_taskname) :\n{human_approved_ids}")
 
     # RAG step 2: fetch documents for the confirmed tasks
-    retrieved_examples = retrieve_tasks(", ".join(human_approved_ids))
+    retrieved_examples = retrieve_tasks(",".join(human_approved_ids))
 
     # Build prompt
     system_prompt = build_system(
