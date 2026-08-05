@@ -107,6 +107,45 @@ def parse_meta(task: str,
         extracted_meta.update(ontology_meta)
     return extracted_meta
 
+
+def parse_io(task: str) -> dict:
+    """Extract required inputs and outputs from a WDL task's input/output blocks
+
+    Parses the task's `input { ... }` block for parameters with no default
+    value (i.e. those lacking `= "<default value>"`), and its `output { ... }`
+    block for all declared outputs. Each parameter is captured as a
+    "name:type" string, and the result formatted for use as ChromaDB document
+    metadata / YAML LLM context in the same style as parse_meta().
+    """
+    extracted_io = {}
+    decl_re = re.compile(r'^([\w\[\],?+ ]+?)\s+(\w+)\s*(=.*)?$')
+
+    input_match = re.search(r'input\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
+    if input_match:
+        required_inputs = []
+        for line in input_match.group(1).splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            decl_match = decl_re.match(line)
+            if decl_match and not decl_match.group(3):
+                required_inputs.append(f"{decl_match.group(2)}:{decl_match.group(1)}")
+        extracted_io['inputs'] = required_inputs
+
+    output_match = re.search(r'output\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
+    if output_match:
+        outputs = []
+        for line in output_match.group(1).splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            decl_match = decl_re.match(line)
+            if decl_match:
+                outputs.append(f"{decl_match.group(2)}:{decl_match.group(1)}")
+        extracted_io['outputs'] = outputs
+
+    return extracted_io
+
 # Meta fields to pull from retrieved WDL tasks and present to LLM
 _LLM_META_TAGS = [
     'description',
