@@ -162,13 +162,14 @@ def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
     """Format retrieved WDL tasks' metadata as YAML, keyed by task name
 
     Extracts the metadata tags a small LLM needs from each retrieved task
-    (via parse_meta()) and renders them as a single key-value YAML document,
-    which is easier for a small model to parse reliably than a Python
-    dict/JSON dump.
+    (via parse_meta() and parse_io()) and renders them as a single key-value
+    YAML document, which is easier for a small model to parse reliably than
+    a Python dict/JSON dump.
     """
     tasks = {}
     for wdl in retrieved_examples:
         meta = parse_meta(wdl, meta_tags=_LLM_META_TAGS, extract_taskname=True)
+        meta.update(parse_io(wdl))
         task_name = meta.pop('task', 'unknown')
         tasks[task_name] = {
             key: (value[0] if isinstance(value, list) and len(value) == 1 else value)
