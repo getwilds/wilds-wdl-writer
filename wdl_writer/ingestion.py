@@ -69,6 +69,10 @@ def parse_ontology_tags(meta_block: str,
     return extracted_meta
 
 
+# Meta tags whose values are free text and should not be split on commas
+_FREE_TEXT_META_TAGS = {'description', 'url'}
+
+
 def parse_meta(task: str,
                meta_tags: list[str] = ['topic', 'species', 'operation'],
                ontology_tags: list[str] | None= None,
@@ -100,7 +104,8 @@ def parse_meta(task: str,
     for tag in meta_tags:
         full_line = re.search(rf'^\s+{tag}:\s+"([^"]+)"', meta_block, re.MULTILINE)
         if full_line:
-            extracted_meta[tag] = full_line.group(1).split(',')
+            value = full_line.group(1)
+            extracted_meta[tag] = value if tag in _FREE_TEXT_META_TAGS else value.split(',')
 
     if ontology_tags:
         ontology_meta = parse_ontology_tags(meta_block, ontology_tags)
