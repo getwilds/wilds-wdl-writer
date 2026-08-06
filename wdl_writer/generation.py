@@ -45,7 +45,12 @@ def validate_wdl(wdl_text: str) -> dict:
 def chat_call(client: Client, model: str, messages: list[dict]) -> str:
     """Single chat completion with streaming dot progress. Returns the assistant message content."""
     chunks = []
-    for i, chunk in enumerate(client.chat(model=model, messages=messages, stream=True)):
+    for i, chunk in enumerate(client.chat(
+        model=model,
+        messages=messages,
+        stream=True,
+        options={"num_ctx": 16000},
+    )):
         token = chunk["message"]["content"]
         chunks.append(token)
         if i % 10 == 0:
