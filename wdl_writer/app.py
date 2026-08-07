@@ -22,7 +22,7 @@ from prompts import build_system, build_user
 from generation import extract_wdl, validate_wdl, build_retry
 import ui_style
 
-_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+_MODEL = os.environ.get("OLLAMA_MODEL", "granite-code:8b")
 _HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _MAX_RETRIES = int(os.environ.get("WDL_MAX_RETRIES", 5))
 _LOGO_PATH = str(Path(__file__).parent / "assets" / "wilds_logo.jpeg")
