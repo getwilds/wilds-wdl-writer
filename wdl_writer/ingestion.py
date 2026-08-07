@@ -163,13 +163,13 @@ _LLM_META_TAGS = [
 ]
 
 
-def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
-    """Format retrieved WDL tasks' metadata as YAML, keyed by task name
+def parse_tasks_metadata(retrieved_examples: list[str]) -> dict[str, dict]:
+    """Extract per-task LLM-facing metadata from retrieved WDL task text, keyed by task name
 
-    Extracts the metadata tags a small LLM needs from each retrieved task
-    (via parse_meta() and parse_io()) and renders them as a single key-value
-    YAML document, which is easier for a small model to parse reliably than
-    a Python dict/JSON dump.
+    Extracts the metadata tags a small LLM needs from each retrieved task via
+    parse_meta() and parse_io(). Returned as a dict (rather than the YAML string
+    format_tasks_as_yaml() produces) so callers can filter it down to a subset
+    of tasks, e.g. after a task-selection step narrows the candidate list.
     """
     tasks = {}
     for wdl in retrieved_examples:
@@ -180,7 +180,21 @@ def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
             key: (value[0] if isinstance(value, list) and len(value) == 1 else value)
             for key, value in meta.items()
         }
+    return tasks
+
+
+def format_tasks_as_yaml(tasks: dict) -> str:
+    """Render a task metadata dict (as returned by parse_tasks_metadata()) as YAML
+
+    Uses a single key-value YAML document, which is easier for a small model
+    to parse reliably than a Python dict/JSON dump.
+    """
     return yaml.dump(tasks, sort_keys=False, default_flow_style=False, width=float("inf"))
+
+
+def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
+    """Format retrieved WDL tasks' metadata as YAML, keyed by task name"""
+    return format_tasks_as_yaml(parse_tasks_metadata(retrieved_examples))
 
 
 def load_wdl_tasks(wdl_dir: str = DEFAULT_WDL_DIR) -> list[tuple[dict, str]]:
