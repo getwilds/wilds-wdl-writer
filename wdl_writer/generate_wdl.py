@@ -12,7 +12,7 @@ from ingestion import parse_tasks_metadata, format_tasks_as_yaml
 from prompts import build_short_system, build_short_user, build_select_system
 from generation import generate_with_retry, select_tasks
 
-_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
+_MODEL = os.environ.get("OLLAMA_MODEL", "granite-code:8b")
 _HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 _MAX_RETRIES = int(os.environ.get("WDL_MAX_RETRIES", 5))
 
