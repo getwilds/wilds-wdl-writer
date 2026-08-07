@@ -21,8 +21,6 @@ def main():
     human_approved_ids = human_tool_approval(final_retrieved_ids)
     print(f"WDL tasks that will be presented to the LLM:\n{human_approved_ids}")
 
-    # print(keyword_dictionary)
-
 
 def prompt_user_for_keywords():
     print("\nWelcome to the WILDS WDL Writer!\n")
