@@ -8,9 +8,9 @@ from ollama import Client
 
 from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks, human_tool_approval
 from retrieval import retrieve_tasks
-from ingestion import format_meta_as_yaml
-from prompts import build_system, build_user
-from generation import generate_with_retry
+from ingestion import parse_tasks_metadata, format_tasks_as_yaml
+from prompts import build_short_system, build_short_user, build_select_system
+from generation import generate_with_retry, select_tasks
 
 _MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:3b")
 _HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
