@@ -29,7 +29,7 @@ def validate_wdl(wdl_text: str) -> dict:
         path = f.name
     try:
         result = subprocess.run(
-            ["sprocket", "check", path],
+            ["sprocket", "check", "--hide-notes", path],
             capture_output=True, text=True, timeout=30,
         )
         return {
