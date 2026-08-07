@@ -19,7 +19,7 @@ A field is written as a single value when it has only one, and as a list when it
 # WDL output rules
  
 - Use WDL version 1.0.
-- Import each task as: `import "<url>" as <basename_of_url_without_.wdl>_tasks` — for example `import "https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-cnvkit/ww-cnvkit.wdl" as ww-cnvkit_tasks`.
+- Import each task as: `import "<url>" as <task_name>_tasks`, where `<task_name>` is the basename of the url without its `.wdl` extension and without any leading `ww-` prefix — for example `import "https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-cnvkit/ww-cnvkit.wdl" as cnvkit_tasks`. WDL identifiers cannot contain hyphens, so always strip the `ww-` prefix.
 - `url` is always a single string. Never treat it as a list.
 - File order: version, then imports, then one `workflow` block containing `input`, the task `call`s in dependency order, and `output`.
 - Wire a `call`'s input to either a workflow input or a prior task's output by variable name, using the `inputs`/`outputs` field names and types exactly.
