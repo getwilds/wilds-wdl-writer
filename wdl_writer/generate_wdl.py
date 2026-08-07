@@ -36,38 +36,41 @@ def main():
     # RAG step 2: fetch documents for the confirmed tasks
     retrieved_examples = retrieve_tasks(",".join(human_approved_ids))
 
-    # Extract relevant metadata from the retrieved tasks for the LLM, formatted
-    # as YAML so a small model can parse it easily
-    wdl_meta_for_llm = format_meta_as_yaml(retrieved_examples)
+    # Extract relevant metadata from the retrieved tasks for the LLM, keyed by
+    # task name so the selection step below can narrow it down
+    candidate_tasks = parse_tasks_metadata(retrieved_examples)
 
-    # # FOR DEBUGGING
-    # print('\n\n')
-    # print(retrieved_examples)
-    # print('\n\n')
-    # print(wdl_meta_for_llm)
-
-    # Build prompt
-    system_prompt = build_system(
-        include_spec=True,
-        include_example=True,
-        include_wilds=True,
-        retrieved_examples=[wdl_meta_for_llm],
-    )
     template_vars = {
-        "tasks": ", ".join(human_approved_ids),
-        "input_data_type": ", ".join(keyword_dict["bio_topic"]),
-        "format": ", ".join(keyword_dict["format"]),
-        "species": ", ".join(keyword_dict["species"]),
+        "user_input_format": ", ".join(keyword_dict["format"]),
+        "user_operations": ", ".join(keyword_dict["operation"]),
     }
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": build_user(template_vars)},
+    client = Client(host=_HOST)
+
+    # LLM call 1: pick which candidate tasks to chain together. Kept separate
+    # from WDL writing so the model isn't juggling task tie-breaking and WDL
+    # syntax in the same pass -- the two-view schema plus every alternative
+    # task is a lot for a small model to hold onto at once.
+    print("\nSelecting tasks for the workflow...")
+    select_messages = [
+        {"role": "system", "content": build_select_system()},
+        {"role": "user", "content": build_short_user(
+            {**template_vars, "tasks_yaml": format_tasks_as_yaml(candidate_tasks)}
+        )},
+    ]
+    selected_names = select_tasks(client, _MODEL, select_messages, set(candidate_tasks))
+    print(f"Selected tasks: {', '.join(selected_names)}")
+    selected_tasks = {name: candidate_tasks[name] for name in selected_names}
+
+    # LLM call 2: write the WDL, now seeing only the tasks already chosen.
+    write_messages = [
+        {"role": "system", "content": build_short_system()},
+        {"role": "user", "content": build_short_user(
+            {**template_vars, "tasks_yaml": format_tasks_as_yaml(selected_tasks)}
+        )},
     ]
 
-    # Generate
     print("\nGenerating WDL workflow (this may take a while)...")
-    client = Client(host=_HOST)
-    result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES)
+    result = generate_with_retry(client, _MODEL, write_messages, _MAX_RETRIES)
 
     # Display result
     print("\n" + "=" * 80)
