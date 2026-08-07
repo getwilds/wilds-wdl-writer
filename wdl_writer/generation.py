@@ -100,15 +100,21 @@ def generate_with_retry(
 
     `messages` is the initial [system, user] list; the caller is responsible
     for building it (benchmarking uses initial_messages(); the generation
-    pipeline assembles it directly from prompts.build_system/build_user).
+    pipeline assembles it from prompts.build_short_system/build_short_user).
+    It is not mutated — each retry is built fresh from it plus only the most
+    recent failed attempt, not the full history of every prior attempt. A
+    small model's own earlier garbled output/errors piling up in context does
+    more to confuse later attempts than it does to help them converge.
 
     Returns a dict with the final outcome plus per-attempt history.
     """
     attempts = []
+    base_messages = list(messages)
+    retry_turn: list[dict] = []
 
     for attempt_idx in range(max_retries + 1):
         print(f"Attempt {attempt_idx + 1} of {max_retries + 1}: generating", end="", flush=True)
-        raw = chat_call(client, model, messages)
+        raw = chat_call(client, model, base_messages + retry_turn)
         print("Validating...", end=" ", flush=True)
         wdl = extract_wdl(raw)
         check = validate_wdl(wdl)
@@ -122,8 +128,10 @@ def generate_with_retry(
         })
         if check["valid"] or attempt_idx == max_retries:
             break
-        messages.append({"role": "assistant", "content": raw})
-        messages.append({"role": "user", "content": build_retry(check["stderr"])})
+        retry_turn = [
+            {"role": "assistant", "content": raw},
+            {"role": "user", "content": build_retry(check["stderr"])},
+        ]
 
     final = attempts[-1]
     return {
