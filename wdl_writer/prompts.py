@@ -14,10 +14,13 @@ from pathlib import Path
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+# Experimental prompts:
 _SPEC = (_PROMPTS_DIR / "system_spec.md").read_text()
 _EXAMPLE = (_PROMPTS_DIR / "system_example.md").read_text()
 _WILDS = (_PROMPTS_DIR / "system_wilds.md").read_text()
 _USER_TEMPLATE = (_PROMPTS_DIR / "user_template.md").read_text()
+
+# Prompts in use:
 _RETRY = (_PROMPTS_DIR / "retry_prompt.md").read_text()
 _SHORT_SYSTEM = (_PROMPTS_DIR / "short_system_prompt.md").read_text()
 _SHORT_EXAMPLE = (_PROMPTS_DIR / "short_example.md").read_text()
