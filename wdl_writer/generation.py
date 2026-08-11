@@ -80,7 +80,7 @@ def chat_call(client: Client, model: str, messages: list[dict]) -> str:
         model=model,
         messages=messages,
         stream=True,
-        options={"num_ctx": 16000},
+        options={"num_ctx": 32000},
     )):
         token = chunk["message"]["content"]
         chunks.append(token)
