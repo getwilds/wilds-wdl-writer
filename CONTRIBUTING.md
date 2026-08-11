@@ -38,8 +38,6 @@ This tool is still in its infancy — the architecture, scope, and conventions a
 
 ## Best Practices
 
-You probably already know these:
-
 - **One concern per PR:** keep pull requests focused. Smaller, targeted PRs are easier to review and less likely to introduce bugs.
 - **Write clear commit messages:** describe *what* changed and *why*, not just *how*.
 - **Don't force-push to shared branches:** if you need to update a PR, add new commits rather than rewriting history.
