@@ -3,35 +3,83 @@
 ## User input
 
 Input data format: fastq
-Requested operations: copy_number_variation_detection, sequence_alignment
+Requested operations: sequence_alignment, variant_calling, annotation
 
 ## Available tasks
 
-run_cnvkit:
-  description: Run CNVkit copy number analysis on tumor sample
-  url: https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-cnvkit/ww-cnvkit.wdl
-  operation: copy_number_variation_detection
+haplotype_caller:
+  description: Call germline SNPs and indels from a BAM file using GATK HaplotypeCaller
+  url: https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-gatk/ww-gatk.wdl
+  operation: variant_calling
   input_sample_required:
-  - tumor_bam:nucleic_acid_sequence_alignment:bam
-  - tumor_bai:data_index:bai
-  input_reference_required: reference_cnn:data_index:cnn
+  - bam:nucleic_acid_sequence_alignment:bam
+  - bam_index:data_index:bai
+  input_reference_required:
+  - reference_fasta:nucleic_acid_sequence:fasta
+  - reference_fasta_index:data_index:fai
+  - reference_dict:data_index:dict
   output_sample:
-  - cnv_calls:sequence_variations:cns
-  - cnv_segments:sequence_variations:cnr
-  - cnv_plot:plot:pdf
+  - vcf:sequence_variations:vcf
+  - vcf_index:data_index:tbi
   output_reference: none
   inputs:
-  - sample_name:String
-  - tumor_bam:File
-  - tumor_bai:File
-  - normal_bam:File?
-  - normal_bai:File?
-  - reference_cnn:File
-  - target_bed:File?
+  - bam:File
+  - bam_index:File
+  - reference_fasta:File
+  - reference_fasta_index:File
+  - reference_dict:File
   outputs:
-  - cnv_segments:File
-  - cnv_calls:File
-  - cnv_plot:File
+  - vcf:File
+  - vcf_index:File
+mutect2:
+  description: Call somatic variants using GATK Mutect2 in tumor-only mode with filtering
+  url: https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-gatk/ww-gatk.wdl
+  operation: variant_calling
+  input_sample_required:
+  - bam:nucleic_acid_sequence_alignment:bam
+  - bam_index:data_index:bai
+  input_reference_required:
+  - gnomad_vcf:sequence_variations:vcf
+  - reference_fasta:nucleic_acid_sequence:fasta
+  - reference_fasta_index:data_index:fai
+  - reference_dict:data_index:dict
+  output_sample:
+  - vcf:sequence_variations:vcf
+  - vcf_index:data_index:tbi
+  - unfiltered_vcf:sequence_variations:vcf
+  - unfiltered_vcf_index:data_index:tbi
+  - stats_file:report:vcf
+  - f1r2_counts:report:tar_format
+  output_reference: none
+  inputs:
+  - bam:File
+  - bam_index:File
+  - reference_fasta:File
+  - reference_fasta_index:File
+  - reference_dict:File
+  - gnomad_vcf:File
+  outputs:
+  - vcf:File
+  - vcf_index:File
+  - unfiltered_vcf:File
+  - unfiltered_vcf_index:File
+  - stats_file:File
+  - f1r2_counts:File
+annovar_annotate:
+  description: Annotate a VCF's variants with ANNOVAR
+  url: https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-annovar/ww-annovar.wdl
+  operation: annotation
+  input_sample_required: vcf_to_annotate:sequence_variations:vcf
+  input_reference_required: none
+  output_sample:
+  - annotated_vcf:sequence_variations:vcf
+  - annotated_table:sequence_features:tsv
+  output_reference: none
+  inputs:
+  - vcf_to_annotate:File
+  outputs:
+  - annotated_vcf:File
+  - annotated_table:File
 bowtie2_align:
   description: Task for aligning sequence reads to a reference genome using Bowtie 2
   url: https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-bowtie2/ww-bowtie2.wdl
@@ -94,4 +142,5 @@ bwa_mem:
 
 selected_tasks:
 - bwa_mem
-- run_cnvkit
+- haplotype_caller
+- annovar_annotate
