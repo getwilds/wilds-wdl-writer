@@ -4,7 +4,7 @@ Thank you for your interest in contributing! This document outlines the process 
 
 ## Before You Start
 
-This tool is still in its infancy — the architecture, scope, and conventions are still settling, and things may change quickly. Before writing any code, please **[open an issue](https://github.com/getwilds/wilds-wdl-writer/issues/new)** to start a discussion about your idea.
+This tool is still in its infancy. The architecture, scope, and conventions are still settling, and things may change quickly. Before writing any code, please **[open an issue](https://github.com/getwilds/wilds-wdl-writer/issues/new)** to start a discussion about your idea.
 
 ## Making Changes
 
