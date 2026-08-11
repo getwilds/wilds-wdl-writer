@@ -35,18 +35,18 @@ The WDL Writer is **not a bioinformatician**. It assembles workflows only from e
    $ cd wilds-wdl-writer
    $ uv pip install numpy chromadb ollama rapidfuzz streamlit
    ```
-2. Make sure Ollama is installed and running, and that you've pulled a model:
+2. Make sure Ollama is installed and running, and that you've pulled a model. To point at a different Ollama host/model, set `OLLAMA_HOST` and `OLLAMA_MODEL` before running.
    ```bash
    $ ollama serve &
    $ ollama pull llama3.2:3b
    ```
+
 3. Run the interactive CLI:
    ```bash
    $ python3 wdl_writer/generate_wdl.py
    ```
    You'll be prompted for your input data type, format, species, and desired analysis steps, then asked to approve which tools to include before the final WDL is generated.
 
-To point at a different Ollama host/model, set `OLLAMA_HOST` and `OLLAMA_MODEL` before running.
 
 
 ## Running on the Fred Hutch cluster (Chorus)
