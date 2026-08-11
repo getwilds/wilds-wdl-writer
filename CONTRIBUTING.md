@@ -2,6 +2,10 @@
 
 Thank you for your interest in contributing! This document outlines the process for contributing to this project.
 
+## Before You Start
+
+This tool is still in its infancy. The architecture, scope, and conventions are still settling, and things may change quickly. Before writing any code, please **[open an issue](https://github.com/getwilds/wilds-wdl-writer/issues/new)** to start a discussion about your idea.
+
 ## Making Changes
 
 1. **Fork the repository** on GitHub
@@ -38,7 +42,3 @@ Thank you for your interest in contributing! This document outlines the process 
 - **Write clear commit messages:** describe *what* changed and *why*, not just *how*.
 - **Don't force-push to shared branches:** if you need to update a PR, add new commits rather than rewriting history.
 - **Link related issues:** if your PR addresses an open issue, reference it in the description (e.g., `Closes #42`).
-
-## Questions
-
-If you're unsure about something, open an issue or start a discussion before investing significant effort. We're happy to provide direction.
