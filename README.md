@@ -1,5 +1,7 @@
 # wilds-wdl-writer
 
+> **Note:** This tool is under active development. Results/outputs are not guaranteed to be stable across runs or updates.
+
 An LLM-based tool for building custom WDL workflows using validated components from the [WILDS WDL Library](https://github.com/getwilds/wilds-wdl-library).
 
 This repository is the **Minimum Viable Product (MVP)** of a larger planned project. The final product is intended to be a point-and-click web application running on the Fred Hutch cluster, making WDL workflow generation accessible to users without requiring any local setup or command-line experience.
