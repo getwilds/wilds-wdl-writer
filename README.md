@@ -7,7 +7,7 @@ This repository is the **Minimum Viable Product (MVP)** of a larger planned proj
 
 ## Disclaimer: performance and trustworthiness
 
-The WDL Writer is **not a bioinformatician**. It assembles workflows only from existing WILDS WDL Library module tasks. The user must define the operations needed (e.g. alignment, variant calling) and approval potential WILDS WDL modules to consider. It uses a local LLM whose output quality varies. **Always review the generated WDL carefully before running it on real data.**
+The WDL Writer is **not a bioinformatician**. It assembles workflows only from existing WILDS WDL Library module tasks. The user must define the operations needed (e.g. alignment, variant calling) and approve potential WILDS WDL modules to consider. It uses a local LLM whose output quality varies. **Always review the generated WDL carefully before running it on real data.**
 
 
 ### Schema
