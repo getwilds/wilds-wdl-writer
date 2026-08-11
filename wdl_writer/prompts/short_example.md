@@ -93,6 +93,7 @@ bwa_mem:
 
 ## Output
 
+```wdl
 version 1.0
 
 import "https://raw.githubusercontent.com/getwilds/wilds-wdl-library/refs/heads/main/modules/ww-cnvkit/ww-cnvkit.wdl" as cnvkit_tasks
@@ -132,3 +133,4 @@ workflow my_analysis {
     File cnv_plot = run_cnvkit.cnv_plot
   }
 }
+```
