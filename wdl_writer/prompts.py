@@ -18,7 +18,6 @@ _PROMPTS_DIR = Path(__file__).parent / "prompts"
 _SPEC = (_PROMPTS_DIR / "system_spec.md").read_text()
 _EXAMPLE = (_PROMPTS_DIR / "system_example.md").read_text()
 _WILDS = (_PROMPTS_DIR / "system_wilds.md").read_text()
-_USER_TEMPLATE = (_PROMPTS_DIR / "user_template.md").read_text()
 
 # Prompts in use:
 _RETRY = (_PROMPTS_DIR / "retry_prompt.md").read_text()
@@ -56,14 +55,6 @@ def build_system(
         parts.append("RETRIEVED TASK METADATA (candidate tasks for this workflow):\n\n"
                      + "\n\n---\n\n".join(retrieved_examples))
     return "\n\n".join(parts)
-
-
-def build_user(template_vars: dict[str, str]) -> str:
-    """Render the fill-in-the-blank user template with the given values."""
-    result = _USER_TEMPLATE
-    for key, value in template_vars.items():
-        result = result.replace(f"{{{{{key}}}}}", value)
-    return result
 
 
 def build_short_system() -> str:
