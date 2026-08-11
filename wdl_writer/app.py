@@ -18,8 +18,9 @@ from user_interface_dicts import (
 )
 from user_interface import filter_keywords_for_tasks
 from retrieval import retrieve_tasks
-from prompts import build_system, build_user
-from generation import extract_wdl, validate_wdl, build_retry
+from ingestion import parse_tasks_metadata, format_tasks_as_yaml
+from prompts import build_short_system, build_short_user, build_select_system
+from generation import generate_with_retry, select_tasks
 import ui_style
 
 _MODEL = os.environ.get("OLLAMA_MODEL", "granite-code:8b")
@@ -217,59 +218,60 @@ if st.session_state.stage == "generate":
         )
 
         retrieved_examples = retrieve_tasks(", ".join(confirmed_ids))
+        candidate_tasks = parse_tasks_metadata(retrieved_examples)
 
-        system_prompt = build_system(
-            include_spec=True,
-            include_example=True,
-            include_wilds=True,
-            retrieved_examples=retrieved_examples,
-        )
         template_vars = {
-            "tasks": ", ".join(confirmed_ids),
-            "input_data_type": ", ".join(keyword_dict["bio_topic"]),
-            "format": ", ".join(keyword_dict["format"]),
-            "species": ", ".join(keyword_dict["species"]),
+            "user_input_format": ", ".join(keyword_dict["format"]),
+            "user_operations": ", ".join(keyword_dict["operation"]),
         }
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": build_user(template_vars)},
-        ]
 
         client = Client(host=_HOST)
 
         with st.status("Generating WDL workflow (this may take a while)...", expanded=True) as status:
-            attempts = []
-            for attempt_idx in range(_MAX_RETRIES + 1):
-                st.write(f"Attempt {attempt_idx + 1} of {_MAX_RETRIES + 1}: generating...")
-                chunks = []
-                for chunk in client.chat(model=_MODEL, messages=messages, stream=True):
-                    chunks.append(chunk["message"]["content"])
-                raw = "".join(chunks)
+            st.write("Selecting tasks for the workflow...")
+            select_messages = [
+                {"role": "system", "content": build_select_system()},
+                {"role": "user", "content": build_short_user(
+                    {**template_vars, "tasks_yaml": format_tasks_as_yaml(candidate_tasks)}
+                )},
+            ]
+            selected_names = select_tasks(client, _MODEL, select_messages, set(candidate_tasks))
+            selected_tasks = {name: candidate_tasks[name] for name in selected_names}
+            st.write(f"Selected tasks: {', '.join(selected_names)}")
 
-                st.write("Validating...")
-                wdl = extract_wdl(raw)
-                check = validate_wdl(wdl)
-                attempts.append({"valid": check["valid"], "stderr": check["stderr"], "wdl": wdl})
+            messages = [
+                {"role": "system", "content": build_short_system()},
+                {"role": "user", "content": build_short_user(
+                    {**template_vars, "tasks_yaml": format_tasks_as_yaml(selected_tasks)}
+                )},
+            ]
 
-                if check["valid"]:
-                    st.write("Validation passed!")
-                    break
-                elif attempt_idx < _MAX_RETRIES:
-                    with st.expander(f"Validation failed — attempt {attempt_idx + 1}"):
-                        st.code(check["stderr"])
-                    messages.append({"role": "assistant", "content": raw})
-                    messages.append({"role": "user", "content": build_retry(check["stderr"])})
-                else:
-                    with st.expander(f"Validation failed after all retries — attempt {attempt_idx + 1}"):
-                        st.code(check["stderr"])
+            st.write("Generating WDL workflow (this may take a while)...")
+            result = generate_with_retry(client, _MODEL, messages, _MAX_RETRIES)
 
-            final = attempts[-1]
+            for attempt in result["attempts"]:
+                if attempt["valid"]:
+                    continue
+                label = (
+                    f"Validation failed — attempt {attempt['attempt'] + 1}"
+                    if attempt is not result["attempts"][-1]
+                    else f"Validation failed after all retries — attempt {attempt['attempt'] + 1}"
+                )
+                with st.expander(label):
+                    st.code(attempt["stderr"])
+            if result["valid"]:
+                st.write("Validation passed!")
+
             status.update(
-                label="Done! Validation passed." if final["valid"] else "Done (validation failed — best attempt shown).",
-                state="complete" if final["valid"] else "error",
+                label="Done! Validation passed." if result["valid"] else "Done (validation failed — best attempt shown).",
+                state="complete" if result["valid"] else "error",
             )
 
-    st.session_state.final_result = final
+    st.session_state.final_result = {
+        "valid": result["valid"],
+        "stderr": result["stderr"],
+        "wdl": result["extracted_wdl"],
+    }
     st.session_state.stage = "done"
     st.rerun()
 
