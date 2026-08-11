@@ -43,7 +43,7 @@ The WDL Writer is **not a bioinformatician**. It assembles workflows only from e
 
 3. Run the interactive CLI:
    ```bash
-   $ python3 wdl_writer/generate_wdl.py
+   $ uv run python3 wdl_writer/generate_wdl.py
    ```
    You'll be prompted for your input data type, format, species, and desired analysis steps, then asked to approve which tools to include before the final WDL is generated.
 
