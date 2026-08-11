@@ -21,8 +21,6 @@ def main():
     human_approved_ids = human_tool_approval(final_retrieved_ids)
     print(f"WDL tasks that will be presented to the LLM:\n{human_approved_ids}")
 
-    # print(keyword_dictionary)
-
 
 def prompt_user_for_keywords():
     print("\nWelcome to the WILDS WDL Writer!\n")
@@ -60,7 +58,7 @@ def prompt_user_for_keywords():
 
     return keyword_dict
 
-def filter_keywords_for_tasks(keyword_dict):
+def filter_keywords_for_tasks(keyword_dict: dict[str, set[str]]) -> set[str]:
 
     # Get the tasks to be retrieved, along with other info
     input_filtered_tasks, tool_filtered_tasks, op_filtered_tasks, user_incompatible_tools = keyword_filter_tasks(keyword_dict)
@@ -138,9 +136,9 @@ def human_tool_approval(retrieved_task_ids: set[str]) -> set[str]:
     """Present the tools used by retrieved_task_ids as menu options, then filter to the tools the user approves."""
 
     tools = sorted({task_id.split('_', 1)[0] for task_id in retrieved_task_ids})
-    prompt = ("----\nTasks from these tools will be given to the LLM for consideration. "
-              "Which do you want to keep? Note that some may be important utilities.\n"
-              "Enter numbers separated by commas, or type 'all' or 'none'.")
+    prompt = ("----\nTasks from these WILDS WDL modules will be given to the LLM for consideration, "
+              "which do you want to keep? Enter numbers separated by commas, or type 'all' or 'none'.\n"
+              "Note that some may be important utilities.\n")
 
     while True:
         print(prompt)

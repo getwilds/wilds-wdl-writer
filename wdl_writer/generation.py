@@ -29,7 +29,7 @@ def validate_wdl(wdl_text: str) -> dict:
         path = f.name
     try:
         result = subprocess.run(
-            ["sprocket", "check", path],
+            ["sprocket", "check", "--hide-notes", path],
             capture_output=True, text=True, timeout=30,
         )
         return {
@@ -42,10 +42,46 @@ def validate_wdl(wdl_text: str) -> dict:
         os.unlink(path)
 
 
+def parse_selected_tasks(text: str, valid_names: set[str]) -> list[str]:
+    """Pull an ordered, deduped list of task names out of the selection model's reply.
+
+    Matches YAML list items (`- task_name`) rather than parsing strict YAML,
+    since a small model may add stray prose around the list despite
+    instructions. Names that don't match a known candidate task are dropped
+    silently — that's treated as the model declining to use that task, not
+    an error.
+    """
+    names = re.findall(r"^\s*-\s*([\w.-]+)\s*$", text, re.MULTILINE)
+    seen = set()
+    selected = []
+    for name in names:
+        if name in valid_names and name not in seen:
+            seen.add(name)
+            selected.append(name)
+    return selected
+
+
+def select_tasks(client: Client, model: str, messages: list[dict], valid_names: set[str]) -> list[str]:
+    """Ask the model which candidate tasks to chain together, and in what order.
+
+    Falls back to every candidate task (unfiltered, original order) if the
+    model's reply doesn't name any of them, so a parsing miss degrades to the
+    old "hand the model everything" behavior instead of failing outright.
+    """
+    raw = chat_call(client, model, messages)
+    selected = parse_selected_tasks(raw, valid_names)
+    return selected or list(valid_names)
+
+
 def chat_call(client: Client, model: str, messages: list[dict]) -> str:
     """Single chat completion with streaming dot progress. Returns the assistant message content."""
     chunks = []
-    for i, chunk in enumerate(client.chat(model=model, messages=messages, stream=True)):
+    for i, chunk in enumerate(client.chat(
+        model=model,
+        messages=messages,
+        stream=True,
+        options={"num_ctx": 32000},
+    )):
         token = chunk["message"]["content"]
         chunks.append(token)
         if i % 10 == 0:
@@ -64,15 +100,21 @@ def generate_with_retry(
 
     `messages` is the initial [system, user] list; the caller is responsible
     for building it (benchmarking uses initial_messages(); the generation
-    pipeline assembles it directly from prompts.build_system/build_user).
+    pipeline assembles it from prompts.build_short_system/build_short_user).
+    It is not mutated — each retry is built fresh from it plus only the most
+    recent failed attempt, not the full history of every prior attempt. A
+    small model's own earlier garbled output/errors piling up in context does
+    more to confuse later attempts than it does to help them converge.
 
     Returns a dict with the final outcome plus per-attempt history.
     """
     attempts = []
+    base_messages = list(messages)
+    retry_turn: list[dict] = []
 
     for attempt_idx in range(max_retries + 1):
         print(f"Attempt {attempt_idx + 1} of {max_retries + 1}: generating", end="", flush=True)
-        raw = chat_call(client, model, messages)
+        raw = chat_call(client, model, base_messages + retry_turn)
         print("Validating...", end=" ", flush=True)
         wdl = extract_wdl(raw)
         check = validate_wdl(wdl)
@@ -86,8 +128,10 @@ def generate_with_retry(
         })
         if check["valid"] or attempt_idx == max_retries:
             break
-        messages.append({"role": "assistant", "content": raw})
-        messages.append({"role": "user", "content": build_retry(check["stderr"])})
+        retry_turn = [
+            {"role": "assistant", "content": raw},
+            {"role": "user", "content": build_retry(check["stderr"])},
+        ]
 
     final = attempts[-1]
     return {

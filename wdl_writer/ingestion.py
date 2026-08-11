@@ -1,6 +1,7 @@
 import chromadb
 import os
 import re
+import yaml
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_WDL_DIR = os.path.join(THIS_DIR, "..", "data", "wdl")
@@ -37,34 +38,17 @@ def get_tasks(wdl: str, toolname: str) -> list[tuple[dict, str]]:
     return tasks
 
 
-def parse_meta(task: str) -> dict:
-    """Extract relevant metadata from a WDL task
+def parse_ontology_tags(meta_block: str,
+                        ont_tags: list[str] = ['input_sample_required', 'output_sample'],
+                        ) -> dict:
+    """Extract and parse EDAM ontology metadata tags from a task's meta block
 
-    Extract and parse custom metadata tags and format them to be used 
-    for ChromaDB document metadata. These tags use EDAM ontology terms and the 
-    tags describing the task's File parameters are formatted as:
-
-    <param_name>:<EDAM_data_type>:<EDAM_format_type>
-
-    When multiple File formats are acceptable for the same parameter, those 
-    formats are separated by "|". E.g.:
-
-    input_aln:nucleic_acid_sequence_alignment:bam|sam|cram
+    These File-type tags are comma-separated <parameter_name>:<EDAM_data_type>:<EDAM_format_type>
+    entries.
     """
     extracted_meta = {}
 
-    meta_match = re.search(r'meta\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
-    if not meta_match:
-        return {}
-    meta_block = meta_match.group(1)
-
-    for tag in ['topic', 'species', 'operation']:
-        full_line = re.search(rf'^\s+{tag}:\s+"([^"]+)"', meta_block, re.MULTILINE)
-        if full_line:
-            extracted_meta[tag] = full_line.group(1).split(',')
-
-    # These File-type tags are comma-separated <parameter_name>:<EDAM
-    for tag in ['input_sample_required', 'output_sample']:
+    for tag in ont_tags:
         full_line = re.search(rf'^\s+{tag}:\s+"([^"]+)"', meta_block, re.MULTILINE)
         if not full_line:
             continue
@@ -83,6 +67,134 @@ def parse_meta(task: str) -> dict:
             extracted_meta['output_sample_data_types'] = param_data
 
     return extracted_meta
+
+
+# Meta tags whose values are free text and should not be split on commas
+_FREE_TEXT_META_TAGS = {'description', 'url'}
+
+
+def parse_meta(task: str,
+               meta_tags: list[str] = ['topic', 'species', 'operation'],
+               ontology_tags: list[str] | None= None,
+               extract_taskname: bool = False) -> dict:
+    """Extract relevant metadata from a WDL task
+
+    Extract plain-text metadata tags (meta_tags) directly from the task's meta
+    block, and, if given, parse EDAM ontology tags (ontology_tags) via
+    parse_ontology_tags(). Formats the result for use as ChromaDB document
+    metadata.
+
+    When multiple File formats are acceptable for the same ontology parameter,
+    those formats are separated by "|". E.g.:
+
+    input_aln:nucleic_acid_sequence_alignment:bam|sam|cram
+    """
+    extracted_meta = {}
+
+    if extract_taskname:
+        task_name_match = re.match(r'^task\s+(\w+)\s*\{', task)
+        if task_name_match:
+            extracted_meta['task'] = task_name_match.group(1)
+
+    meta_match = re.search(r'meta\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
+    if not meta_match:
+        return {}
+    meta_block = meta_match.group(1)
+
+    for tag in meta_tags:
+        full_line = re.search(rf'^\s+{tag}:\s+"([^"]+)"', meta_block, re.MULTILINE)
+        if full_line:
+            value = full_line.group(1)
+            extracted_meta[tag] = value if tag in _FREE_TEXT_META_TAGS else value.split(',')
+
+    if ontology_tags:
+        ontology_meta = parse_ontology_tags(meta_block, ontology_tags)
+        extracted_meta.update(ontology_meta)
+    return extracted_meta
+
+
+def parse_io(task: str) -> dict:
+    """Extract required inputs and outputs from a WDL task's input/output blocks
+
+    Parses the task's `input { ... }` block for parameters with no default
+    value (i.e. those lacking `= "<default value>"`), and its `output { ... }`
+    block for all declared outputs. Each parameter is captured as a
+    "name:type" string, and the result formatted for use as ChromaDB document
+    metadata / YAML LLM context in the same style as parse_meta().
+    """
+    extracted_io = {}
+    decl_re = re.compile(r'^([\w\[\],?+ ]+?)\s+(\w+)\s*(=.*)?$')
+
+    input_match = re.search(r'input\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
+    if input_match:
+        required_inputs = []
+        for line in input_match.group(1).splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            decl_match = decl_re.match(line)
+            if decl_match and not decl_match.group(3):
+                required_inputs.append(f"{decl_match.group(2)}:{decl_match.group(1)}")
+        extracted_io['inputs'] = required_inputs
+
+    output_match = re.search(r'output\s*\{([^{}]*(?:\{[^{}]*\}[^{}]*)*)\}', task, re.DOTALL)
+    if output_match:
+        outputs = []
+        for line in output_match.group(1).splitlines():
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            decl_match = decl_re.match(line)
+            if decl_match:
+                outputs.append(f"{decl_match.group(2)}:{decl_match.group(1)}")
+        extracted_io['outputs'] = outputs
+
+    return extracted_io
+
+# Meta fields to pull from retrieved WDL tasks and present to LLM
+_LLM_META_TAGS = [
+    'description',
+    'url',
+    'operation',
+    'input_sample_required',
+    'input_reference_required',
+    'output_sample',
+    'output_reference',
+]
+
+
+def parse_tasks_metadata(retrieved_examples: list[str]) -> dict[str, dict]:
+    """Extract per-task LLM-facing metadata from retrieved WDL task text, keyed by task name
+
+    Extracts the metadata tags a small LLM needs from each retrieved task via
+    parse_meta() and parse_io(). Returned as a dict (rather than the YAML string
+    format_tasks_as_yaml() produces) so callers can filter it down to a subset
+    of tasks, e.g. after a task-selection step narrows the candidate list.
+    """
+    tasks = {}
+    for wdl in retrieved_examples:
+        meta = parse_meta(wdl, meta_tags=_LLM_META_TAGS, extract_taskname=True)
+        meta.update(parse_io(wdl))
+        task_name = meta.pop('task', 'unknown')
+        tasks[task_name] = {
+            key: (value[0] if isinstance(value, list) and len(value) == 1 else value)
+            for key, value in meta.items()
+        }
+    return tasks
+
+
+def format_tasks_as_yaml(tasks: dict) -> str:
+    """Render a task metadata dict (as returned by parse_tasks_metadata()) as YAML
+
+    Uses a single key-value YAML document, which is easier for a small model
+    to parse reliably than a Python dict/JSON dump.
+    """
+    return yaml.dump(tasks, sort_keys=False, default_flow_style=False, width=float("inf"))
+
+
+def format_meta_as_yaml(retrieved_examples: list[str]) -> str:
+    """Format retrieved WDL tasks' metadata as YAML, keyed by task name"""
+    return format_tasks_as_yaml(parse_tasks_metadata(retrieved_examples))
 
 
 def load_wdl_tasks(wdl_dir: str = DEFAULT_WDL_DIR) -> list[tuple[dict, str]]:
@@ -104,7 +216,8 @@ def load_wdl_tasks(wdl_dir: str = DEFAULT_WDL_DIR) -> list[tuple[dict, str]]:
             content = f.read()
         tasks = get_tasks(content, toolname)
         for meta, task_text in tasks:
-            meta.update(parse_meta(task_text))
+            meta.update(parse_meta(task_text,
+                                   ontology_tags=['input_sample_required', 'output_sample']))
         metas_tasks.extend(tasks)
     return metas_tasks
 

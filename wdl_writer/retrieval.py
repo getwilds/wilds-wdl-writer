@@ -2,8 +2,9 @@
 
 For a given case (user input), pull relevant WDL task definitions from the
 ChromaDB collection populated by ingestion.py. The retrieved tasks are
-returned as plain strings (full task WDL text) ready to pass into
-`build_system(retrieved_examples=...)`.
+returned as plain strings (full task WDL text), ready for either
+`build_system(retrieved_examples=...)` or `ingestion.parse_tasks_metadata()`
+depending on which prompt pipeline the caller uses.
 
 Current strategy: metadata filter on `tool`. For each module the user
 requested, retrieve all of that tool's tasks. Vector-search ranking by

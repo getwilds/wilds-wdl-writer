@@ -14,11 +14,18 @@ from pathlib import Path
 
 _PROMPTS_DIR = Path(__file__).parent / "prompts"
 
+# Experimental prompts:
 _SPEC = (_PROMPTS_DIR / "system_spec.md").read_text()
 _EXAMPLE = (_PROMPTS_DIR / "system_example.md").read_text()
 _WILDS = (_PROMPTS_DIR / "system_wilds.md").read_text()
-_USER_TEMPLATE = (_PROMPTS_DIR / "user_template.md").read_text()
+
+# Prompts in use:
 _RETRY = (_PROMPTS_DIR / "retry_prompt.md").read_text()
+_SHORT_SYSTEM = (_PROMPTS_DIR / "short_system_prompt.md").read_text()
+_SHORT_EXAMPLE = (_PROMPTS_DIR / "short_example.md").read_text()
+_SHORT_USER_TEMPLATE = (_PROMPTS_DIR / "short_user_template.md").read_text()
+_SELECT_SYSTEM = (_PROMPTS_DIR / "select_system_prompt.md").read_text()
+_SELECT_EXAMPLE = (_PROMPTS_DIR / "select_example.md").read_text()
 
 # Bare-bones system prompt used by the "raw" benchmarking tier — no WDL
 # context at all, just a code-fence instruction. Kept inline because it's
@@ -45,16 +52,32 @@ def build_system(
     if include_wilds:
         parts.append(_WILDS)
     if retrieved_examples:
-        parts.append("REFERENCE WDL EXAMPLES (for inspiration, do not copy verbatim):\n\n"
+        parts.append("RETRIEVED TASK METADATA (candidate tasks for this workflow):\n\n"
                      + "\n\n---\n\n".join(retrieved_examples))
     return "\n\n".join(parts)
 
 
-def build_user(template_vars: dict[str, str]) -> str:
-    """Render the fill-in-the-blank user template with the given values."""
-    result = _USER_TEMPLATE
+def build_short_system() -> str:
+    """Return the short system prompt with its worked example appended."""
+    return _SHORT_SYSTEM + "\n\n" + _SHORT_EXAMPLE
+
+
+def build_select_system() -> str:
+    """Return the task-selection system prompt with its worked example appended.
+
+    Used for the first of two LLM calls in the short pipeline: this one picks
+    which candidate tasks to chain together (no WDL syntax involved), and its
+    output narrows the candidate list for the second call built by
+    build_short_system()/build_short_user().
+    """
+    return _SELECT_SYSTEM + "\n\n" + _SELECT_EXAMPLE
+
+
+def build_short_user(template_vars: dict[str, str]) -> str:
+    """Render the short fill-in-the-blank user template with the given values."""
+    result = _SHORT_USER_TEMPLATE
     for key, value in template_vars.items():
-        result = result.replace(f"{{{{{key}}}}}", value)
+        result = result.replace(f"{{{key}}}", value)
     return result
 
 

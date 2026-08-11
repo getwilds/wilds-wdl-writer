@@ -1,5 +1,7 @@
 # wilds-wdl-writer
 
+> **Note:** This tool is under active development. Results/outputs are not guaranteed to be stable across runs or updates.
+
 An LLM-based tool for building custom WDL workflows using validated components from the [WILDS WDL Library](https://github.com/getwilds/wilds-wdl-library).
 
 This repository is the **Minimum Viable Product (MVP)** of a larger planned project. The final product is intended to be a point-and-click web application running on the Fred Hutch cluster, making WDL workflow generation accessible to users without requiring any local setup or command-line experience.
@@ -18,7 +20,7 @@ The WDL Writer is **not a bioinformatician**. It assembles workflows only from e
 ## Requirements
 
 - Python 3.13+
-- [Ollama](https://ollama.com/) running locally (or reachable via `OLLAMA_HOST`), with a model pulled (default: `llama3.2:3b`, configurable via `OLLAMA_MODEL`)
+- [Ollama](https://ollama.com/) running locally (or reachable via `OLLAMA_HOST`), with a model pulled (default: `granite-code:8b`, configurable via `OLLAMA_MODEL`)
 - `numpy`
 - `chromadb`
 - `ollama`
@@ -35,11 +37,12 @@ The WDL Writer is **not a bioinformatician**. It assembles workflows only from e
    $ cd wilds-wdl-writer
    $ uv pip install numpy chromadb ollama rapidfuzz streamlit
    ```
-2. Make sure Ollama is installed and running, and that you've pulled a model. To point at a different Ollama host/model, set `OLLAMA_HOST` and `OLLAMA_MODEL` before running.
+2. Make sure Ollama is installed and running, then pull the default model:
    ```bash
-   $ ollama serve &
-   $ ollama pull llama3.2:3b
+   $ ollama pull granite-code:8b
    ```
+
+To point at a different Ollama host/model, set `OLLAMA_HOST` and `OLLAMA_MODEL` before running.
 
 3. Run the interactive CLI:
    ```bash
