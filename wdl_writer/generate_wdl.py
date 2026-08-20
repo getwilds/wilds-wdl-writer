@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import httpx
 from ollama import Client
 
 from user_interface import prompt_user_for_keywords, filter_keywords_for_tasks, human_tool_approval
@@ -57,7 +58,11 @@ def main():
             {**template_vars, "tasks_yaml": format_tasks_as_yaml(candidate_tasks)}
         )},
     ]
-    selected_names = select_tasks(client, _MODEL, select_messages, set(candidate_tasks))
+    try:
+        selected_names = select_tasks(client, _MODEL, select_messages, set(candidate_tasks))
+    except httpx.ConnectError:
+        print("\nERROR (httpx.ConnectError): Ensure Ollama is running and try again.")
+        return
     print(f"Selected tasks: {', '.join(selected_names)}")
     selected_tasks = {name: candidate_tasks[name] for name in selected_names}
 
@@ -70,7 +75,11 @@ def main():
     ]
 
     print("\nGenerating WDL workflow (this may take a while)...")
-    result = generate_with_retry(client, _MODEL, write_messages, _MAX_RETRIES)
+    try:
+        result = generate_with_retry(client, _MODEL, write_messages, _MAX_RETRIES)
+    except httpx.ConnectError:
+        print("\nERROR (httpx.ConnectError): Ensure Ollama is running and try again.")
+        return
 
     # Display result
     print("\n" + "=" * 80)
